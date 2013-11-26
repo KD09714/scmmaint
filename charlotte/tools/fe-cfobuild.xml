@@ -1,0 +1,255 @@
+<!-- Change History-->
+
+<!-- 10/29/2013   Dharmendra Kumar     timenow variable should be populated at start of script   -->
+<!-- 10/29/2013   Dharmendra Kumar     Delete the workspace before doing fresh checkout          -->  
+<!-- 09/27/2013   Dharmendra Kumar     Added support to Global.asax file packaging.              -->
+<!-- 08/01/2013   Dharmendra Kumar     Added target testpatch to run daily test builds.          -->
+<!-- 07/24/2013   Dharmendra Kumar     Removing debug codes.                                     -->
+<!-- 07/18/2013   Dharmendra Kumar     Added support to find the full fe packaging scenario.     -->
+<!-- 07/17/2013   Dharmendra Kumar     Added support to ascx.vb file type in packaging.          -->
+<!-- 07/12/2013   Dharmendra Kumar     Preserve modified file while packaging front end.         -->
+<!-- 07/09/2013   Dharmendra Kumar     Excluded *.tmp, *.vsss, Thumbs.db from the full FE package-->
+<!-- 06/24/2013   Dharmendra Kumar     Added support to do full package if fullpackage variable  -->
+<!--                                   is set to Y in config file.                               -->
+<!-- 06/06/2013   Dharmendra Kumar     Initial Coding to Automate Charllote FE Build & Packaging -->
+<!-- rev=2013.1.9-->
+
+<project name="cltfebuild" default="vsshistory" basedir="..">
+<taskdef resource="net/sf/antcontrib/antcontrib.properties"/>
+<taskdef name="stringutil" classname="ise.antelope.tasks.StringUtilTask"/>
+<property file="cfg/fe-clt-${rel}.cfg"/>
+<property file="cfg/fe-lastpackage-${rel}.cfg"/>
+<property name="lastpackagetime" value="01/01/2000 01:01 AM" />
+	<tstamp> <format property="timestamp" pattern="yyMMdd"/> </tstamp>
+	<tstamp> <format property="timestampHHmm" pattern="yyMMddHHmm" /> </tstamp>
+	<tstamp> <format property="timenow" pattern="MM/dd/yyyy hh:mm aa"/> </tstamp>
+	
+	<target name="prebuild">
+		<property name="targetdir" value="${patchdir}/Releases/clt${timestamp}" />
+		<if>
+			<available file="${targetdir}/FE/bin" type="dir"/>
+			<then>
+				<!--fail message="Target Directory ${targetdir}/FE Exists, Please delete the directory and try again..!"/-->
+				<move file="${targetdir}/FE" tofile="${targetdir}/FE-${timestampHHmm}" />
+				<mkdir dir="${targetdir}/FE"/>
+			</then>
+			<else>
+				<mkdir dir="${targetdir}/FE"/>
+			</else>
+		</if>
+		<!-- delete workspace before doing fresh checkout -->
+		<delete>
+			<fileset dir="${workdir}">
+				<include name="**/*" />
+				<exclude name="**/*.sln" />
+			</fileset>
+		</delete>
+	</target>
+	
+	<target name="vsshistory">
+		<vsshistory vsspath="${vssdir}" 
+					serverPath="${ssdir}"
+					recursive="true"
+					output="history.log"
+		/>
+	</target>
+
+	<target name="vssget">
+		<vssget localPath="${workdir}"
+				vsspath="${vssdir}"
+				serverPath="${ssdir}"
+				filetimestamp="modified"
+				recursive="true"
+				writable="true"
+		/>
+	</target>
+
+	<target name="febuild">
+		<exec executable="cmd" failonerror="true">
+			<arg value="/c"/>
+			<arg value="msbuild.exe /p:Configuration=Release"/>
+			<arg value="${workdir}/2013ReleaseCodeProject.sln"/>
+		</exec>
+	</target>
+	
+	<target name="getupdatedfiles">
+		<fileset id="file.list" dir="${workdir}" includes="**/*" excludes="**/*.sln,**/*.sln.cache">
+			<date datetime="${lastpackagetime}" when="after"/>
+		</fileset>
+
+		<property name="list.files" refid="file.list"/>
+    	
+		<echo message="List of changed files since ${lastpackagetime} are as follows .." />
+		<echo message="" />
+		<for list="${list.files}" delimiter=";" param = "filewithpath">
+			<sequential>
+				<echo message="@{filewithpath}" />
+			</sequential>
+		</for>
+	</target>
+	
+	<target name="createpackage" depends="getupdatedfiles" >
+		<for list="${list.files}" delimiter=";" param = "filewithpath">
+			<sequential>
+				<var name="filenamewext" unset="true"/>
+				<basename property="filenamewext" file="@{filewithpath}"/>
+				<for list="${requirefullpackage}" delimiter=";" param="filerequirefullpackage">
+					<sequential>
+						<if>
+							<equals arg1="@{filerequirefullpackage}" arg2="${filenamewext}" />
+							<then>
+								<var name="fullpackage" unset="true" />
+								<property name="fullpackage" value="Y" />
+								<echo message="${filenamewext} require full front end packaging." />
+							</then>
+						</if>
+					</sequential>
+				</for>
+			</sequential>
+		</for>
+		
+		<if>
+			<equals arg1="${fullpackage}" arg2="Y" />
+			<then>
+				<antcall target="create-full-package" />
+			</then>
+			<else>
+				<antcall target="create-incremental-package" />
+			</else>
+		</if>
+	</target>
+	
+	<target name="create-full-package">
+		<echo message="NOTE : Full package creation in progress.." />
+		<copy todir="${targetdir}/FE" preservelastmodified="true">
+			<fileset dir="${outputdir}">
+				<exclude name="**/*.sln" />
+				<exclude name="**/*.sln.cache" />
+				<exclude name="web.config" />
+				<exclude name="**/*.tmp" />
+				<exclude name="**/*.vsss" />
+				<exclude name="**/Thumbs.db" />
+			</fileset>
+		</copy>
+	</target>
+	
+	<target name="create-incremental-package">
+		<for list="${list.files}" delimiter=";" param = "filewithpath">
+			<sequential>
+				<copy file="${outputdir}/bin/App_Code.dll" todir="${targetdir}/FE/bin" verbose="true" preservelastmodified="true"/>
+				<echo message="Processing @{filewithpath}" />
+				<var name="fileprocessed" unset="true" />
+				<var name="filenamewoext" unset="true"/>
+				<var name="filenamewoext.aspx.vb" unset="true"/>
+				<var name="filenamewoext.ascx.vb" unset="true"/>
+				<var name="filenamewoext_lower" unset="true"/>
+				
+				<!-- Get the file name from the full path -->
+				<var name="filenamewext" unset="true"/>
+				<basename property="filenamewext" file="@{filewithpath}"/>
+				
+				<!-- Get the file extension -->
+				<for list="${filenamewext}" delimiter="." param = "ext">
+					<sequential>
+						<var name="ext" unset="true"/>
+						<property name="ext" value="@{ext}" />
+						<property name="filenamewoext" value="@{ext}" />
+					</sequential>
+				</for>
+				
+				<!-- Handle *.aspx.vb file and convert into lowercase -->
+				<basename property="filenamewoext.aspx.vb" file="@{filewithpath}"
+				suffix=".aspx.vb"/>
+				<property name="filenamewoext_lower" value="${filenamewoext}" />
+				
+				<!-- Handle *.ascx.vb file and convert into lowercase -->
+				<basename property="filenamewoext.ascx.vb" file="@{filewithpath}"
+				suffix=".ascx.vb"/>
+				<property name="filenamewoext_lower" value="${filenamewoext}" />
+				
+				<stringutil string="${filenamewoext_lower}" property="filenamewoext_lower">
+					<lowercase/>
+				</stringutil>
+
+				<!-- Split the directory path to find the root directory -->
+				<var name="file.part.1" unset="true"/>
+				<for list="@{filewithpath}" delimiter="\" param = "file.part">
+					<sequential>
+						<property name="file.part.1" value="@{file.part}" />
+					</sequential>
+				</for>
+				<!--echo message="${filename}" /-->
+				
+				<!-- Write rules to create package -->
+				<if>
+				<equals arg1="${file.part.1}" arg2="App_Code" />
+					<then>
+						<copy file="${outputdir}/bin/App_Code.dll" todir="${targetdir}/FE/bin" verbose="true" preservelastmodified="true"/>
+					</then>
+				
+				<elseif>
+				<equals arg1="${file.part.1}" arg2="App_GlobalResources" />
+					<then>
+						<copy file="${outputdir}/bin/App_GlobalResources.dll" todir="${targetdir}/FE/bin" verbose="true" preservelastmodified="true"/>
+					</then>
+				</elseif>
+				
+				<elseif>
+				<equals arg1="${filenamewext}" arg2="web.config" />
+					<then>
+						<echo message="nothing to do." />
+					</then>
+				</elseif>
+				
+				<elseif>
+				<equals arg1="${filenamewext}" arg2="Global.asax" />
+					<then>
+						<copy file="${outputdir}/bin/App_global.asax.dll" todir="${targetdir}/FE/bin" verbose="true" preservelastmodified="true"/>
+					</then>
+				</elseif>
+				
+				<elseif>
+				<equals arg1="${filenamewoext.aspx.vb}" arg2="${filenamewoext}" />
+					<then>
+						<copy todir="${targetdir}/FE/bin" verbose="true" overwrite="true" preservelastmodified="true">
+							<fileset dir="${outputdir}/bin">
+								<filename name="App_Web_${filenamewoext_lower}*.dll" />
+							</fileset>
+						</copy>
+					</then>
+				</elseif>
+				
+				<elseif>
+				<equals arg1="${filenamewoext.ascx.vb}" arg2="${filenamewoext}" />
+					<then>
+						<copy todir="${targetdir}/FE/bin" verbose="true" overwrite="true" preservelastmodified="true">
+							<fileset dir="${outputdir}/bin">
+								<filename name="App_Web_${filenamewoext_lower}*.dll" />
+							</fileset>
+						</copy>
+					</then>
+				</elseif>
+				
+				<!--All the other files will get copied as it is -->
+				<else>
+					<copy file="${outputdir}/@{filewithpath}" tofile="${targetdir}/FE/@{filewithpath}" verbose="true" overwrite="true" preservelastmodified="true"/>
+				</else>
+				</if>
+			</sequential>
+		</for>
+	</target>
+
+	<target name="wrapuppatch" depends="prebuild, vssget, febuild, getupdatedfiles, createpackage">
+		<delete file="${archievedir}/${rel}/fe-clt.zip" />
+		<zip destfile="${archievedir}/${rel}/fe-clt.zip" basedir="${targetdir}/FE" />
+		<echo message="lastpackagetime=${timenow}" file="cfg/fe-lastpackage-${rel}.cfg" force="true" />
+	</target>
+	
+	<!-- target to run daily test build & check the failure if any-->
+	<target name="testpatch" depends="prebuild, vssget, febuild, getupdatedfiles, createpackage">
+		<delete file="${archievedir}/${rel}/fe-clt.zip" />
+		<zip destfile="${archievedir}/${rel}/fe-clt.zip" basedir="${targetdir}/FE" />
+		<echo message="lastpackagetime=${timenow}" file="cfg/fe-lastpackage-${rel}.cfg" force="true" />
+	</target>
+	
+</project>

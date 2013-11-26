@@ -1,0 +1,318 @@
+<!-- Change History-->
+
+<!-- 10/09/2013     Dharmendra Kumar  Making telerik dll overwrite conditional.                       -->
+<!-- 09/30/2013     Dharmendra Kumar  Accomodated packaging of projects in svn and added comments.    -->
+<!-- 07/17/2013     Dharmendra Kumar  Removed UpdateAddvThemes from AMIPAtch creation as of 13A.      -->
+<!-- 07/02/2013     Dharmendra Kumar  Added target CreateEmptyDir to craete empty directory as needed -->
+<!-- 06/10/2013     Dharmendra Kumar  Added target to rename the cfg as mentioned in config file.     -->
+<!-- 05/14/2013     Dharmendra Kumar  Added resourcetype & standardtheme variable support             -->
+<!-- 04/11/2013     Dharmendra Kumar  Added support to create & wrapup AMIThemes                      -->
+<!-- 04/10/2013     Dharmendra Kumar  Added target to customize the package                           -->
+<!-- 03/29/2013     Dharmendra Kumar  RemoveCfg target can delete directory also if specified         -->
+<!-- 03/29/2013     Dharmendra Kumar  Added code to name patch folder.                                -->
+<!-- 03/20/2013     Dharmendra Kumar  Changed the output directory format to include freeze number    -->
+<!-- 03/20/2013     Dharmendra Kumar  Added target WrapupAMI to support AMI Builds.                   -->
+<!-- 03/17/2013     Dharmendra Kumar  Added support of common config file for release.                -->
+<!-- 03/11/2013     Dharmendra Kumar  Added code to pass all config files to delete in one array and  -->
+<!--                                  handle in filestodelete.										  -->
+<!-- 02/26/2013     Dharmendra Kumar  Added publisheddir variable to handle the case where it's value -->
+<!--								  is different than project name								  -->
+<!-- 02/15/2013		Dharmendra Kumar  Initial Coding to Support Packaging of GlobalOffice Products    -->
+<!-- rev=2013.0.16-->
+
+<project name="CreatePatch" default="WrapupPatch" basedir="..">
+	<property environment="env" />
+	<property file="cfg/${project}-${rel}.cfg"/>
+	<property file="cfg/${rel}.cfg"/>
+	<property file="${builddir}/freeze.cfg" />
+
+<!-- cfg files for svn projects -->
+	<property file="cfg/${project}-${svnrepo}-${rel}.cfg"/>
+	<property file="cfg/${svnrepo}-${rel}.cfg"/>
+	<property file="cfg/${svnrepo}.cfg" />
+	
+	<taskdef resource="net/sf/antcontrib/antcontrib.properties"/>
+	<taskdef resource="net/sf/antcontrib/antlib.xml"/>
+
+<!-- Show Timestamp -->
+	<tstamp>
+		<format property="TimeStamp1" pattern="yyyyMMdd"/>
+		<format property="TimeStamp2" pattern="yyyyMMdd-HHmm"/>
+	</tstamp>
+	<echo message="TIMESTAMP : ${TimeStamp2}" />
+
+<!-- Setting publisheddir & outputdir if they are not set in cfg files-->
+	<property name="publisheddir" value="${project}" />
+	<property name="outdir" value="${rel}" />
+	
+	<!-- Check if freeze number is set -->	
+	<condition property="freeze.is.set">
+		<isset property="freeze" />
+	</condition>
+
+<!-- Create published directory -->
+	<if>
+		<available file="D:/Published/${outdir}" type="dir"/>
+		<then> </then>
+		<else>
+			<mkdir dir="D:/Published/${outdir}" />
+		</else>
+	</if>
+	
+<!-- Case of SVN projects -->
+	<condition property="svnrepo.is.set">
+		<isset property="svnrepo" />
+	</condition>
+
+	<path id="archive.id.path">
+		<dirset dir="D:/Published/${outdir}">
+			<include name="*"/>
+		</dirset>
+	</path>
+	<property name="workspacerev" value="${svnrev}" />
+	
+	<if>
+	<equals arg1="${svnrepo.is.set}" arg2="true" />
+	<then>
+		<property name="archive.id.file" refid="archive.id.path"/>
+		<propertyregex property="archive.id" input="${archive.id.file}" defaultValue="1" regexp=".*_${majorrev}.${minorrev}.${workspacerev}.(\d*)" select="\1" />
+		
+		<if>
+		<equals arg1="${workspacerev}" arg2="${svnrev}" />
+		<then>
+			<property name="newsvnbuildnumber" value="${archive.id}" />
+		</then>
+		<else>
+			<math result="newsvnbuildnumber" operation="+" operand1="1" operand2="${archive.id}" datatype="int" />
+		</else>
+		</if>
+	
+		<property name="archivedir" value="D:/Published/${outdir}/${TimeStamp1}_${majorrev}.${minorrev}.${svnrev}.${newsvnbuildnumber}" />
+	</then>
+	</if>
+
+<!-- Set the archive directory under which zip packages will be copied -->
+	<if>
+	<equals arg1="${freeze.is.set}" arg2="true" />
+		<then>
+			<property name="archivedir" value="D:/Published/${outdir}/${TimeStamp1}_${freeze}" />
+		</then>
+		<else>
+			<path id="artifact.id.path">
+				<dirset dir="D:/Published/${outdir}">
+					<include name="*"/>
+				</dirset>
+			</path>
+			<property name="artifact.id.file" refid="artifact.id.path"/>
+			<propertyregex property="artifact.id" input="${artifact.id.file}" regexp=".*_Patch(\d*)" select="\1"  />
+			<property name="artifact.id" value="0" />
+				<math result="newpatchnumber" operation="+" operand1="1" operand2="${artifact.id}" datatype="int" />
+			<property name="archivedir" value="D:/Published/${outdir}/${TimeStamp1}_Patch${newpatchnumber}" />
+			<echo message="freeze=Patch${newpatchnumber}" file="${builddir}/freeze.cfg" force="true" />
+		</else>
+	</if>
+
+	<target name="CreateThemes">
+		<delete dir="${baseoutdir}/${rel}/patch"/>
+		<for list="${custom}" delimiter=";" param = "val">
+			<sequential>
+				<mkdir dir="${baseoutdir}/${rel}/patch/@{val}CUIThemes" />
+				<copy todir="${baseoutdir}/${rel}/patch/@{val}CUIThemes/Default" preservelastmodified="true">
+					<fileset dir="${builddir}/AMISQLThemes/@{val}/CUI/Sungard.AddVantage.UI.StandardTheme/MyThemes/Default" />
+				</copy>
+				<mkdir dir="${baseoutdir}/${rel}/patch/@{val}ASISThemes" />
+				<copy todir="${baseoutdir}/${rel}/patch/@{val}ASISThemes/Default" preservelastmodified="true">
+					<fileset dir="${builddir}/AMISQLThemes/@{val}/CUI/Sungard.AddVantage.UI.StandardTheme/AddvantageBrowserTheme/Default" />
+				</copy>
+			</sequential>
+		</for>
+	</target>
+
+	<target name="WrapupThemes" depends="CreateThemes">
+		<delete file="${baseoutdir}/${rel}/${project}_${custom}.zip" />
+		<zip destfile="${baseoutdir}/${rel}/${project}_${custom}.zip" basedir="${baseoutdir}/${rel}/patch" />
+	</target>
+
+	<target name="MoveThemes">
+		<if>
+			<available file="${archivedir}/${project}_${custom}.zip"/>
+			<then>
+				<move file="${archivedir}/${project}_${custom}.zip" tofile="${archivedir}/${project}_${custom}-${TimeStamp2}.zip"/>
+			</then>
+		</if>
+		<copy file="${baseoutdir}/${rel}/${project}_${custom}.zip" todir="${archivedir}" overwrite="true"/>
+		<echo message="${project}_${custom}.zip is available at ${archivedir}"/>
+	</target>
+
+	<target name="CreatePatch" >
+		<delete dir="${baseoutdir}/${rel}/patch"/>
+
+		<move todir="${baseoutdir}/${rel}/patch/${project}" preservelastmodified="true">
+			<fileset dir="${baseoutdir}/${rel}/${project}/_PublishedWebsites/${publisheddir}"/>
+		</move>
+
+		<delete dir="${baseoutdir}/${rel}/${project}/_PublishedWebsites" />
+		<delete dir="${baseoutdir}/${rel}/patch/${project}/bin"/>
+	
+		<move todir="${baseoutdir}/${rel}/patch/${project}/bin" preservelastmodified="true">
+			<fileset dir="${baseoutdir}/${rel}/${project}"/>
+		</move>
+
+		<if>
+			<equals arg1="${replacetelerik}" arg2="no" />
+			<then>
+				<echo message="Not replacing Telerik.Web.UI.dll as requeted." />
+			</then>
+			<elseif>
+				<available file="${baseoutdir}/${rel}/patch/${project}/bin/Telerik.Web.UI.dll"/>
+				<then>
+					<copy file="C:/scm/licensed-dll/Telerik.Web.UI.dll" todir="${baseoutdir}/${rel}/patch/${project}/bin" preservelastmodified="true" overwrite="true"/>
+				</then>
+			</elseif>
+		</if>
+	</target>
+
+	<target name="RemoveCfg" if="filestodelete">
+		<for list="${filestodelete}" delimiter=";" param = "val">
+			<sequential>
+				<if>
+					<available file="${baseoutdir}/${rel}/patch/${project}/@{val}" type="dir"/>
+					<then>
+						<delete dir="${baseoutdir}/${rel}/patch/${project}/@{val}"/>
+					</then>
+					<else>
+						<delete file="${baseoutdir}/${rel}/patch/${project}/@{val}"/>
+					</else>
+				</if>
+			</sequential>
+		</for>
+	</target>
+
+	<target name="WrapupPatch" depends="CreatePatch, RemoveCfg, RenameCfg">
+		<delete file="${baseoutdir}/${rel}/${project}.zip" />
+		<zip destfile="${baseoutdir}/${rel}/${project}.zip" basedir="${baseoutdir}/${rel}/patch" />
+	</target>
+
+	<target name="ZipPatch">
+		<delete dir="${baseoutdir}/${rel}/patch"/>
+		<delete file="${baseoutdir}/${rel}/${project}.zip" />
+		<copy todir="${baseoutdir}/${rel}/patch/${project}/${copytodir}" preservelastmodified="true">
+			<fileset dir="${outputexedir}"/>
+		</copy>
+		<zip destfile="${baseoutdir}/${rel}/${project}.zip" basedir="${baseoutdir}/${rel}/patch" />
+	</target>
+
+	<target name="MovePatch">
+		<if>
+			<available file="${archivedir}/${project}.zip"/>
+			<then>
+				<move file="${archivedir}/${project}.zip" tofile="${archivedir}/${project}-${TimeStamp2}.zip"/>
+			</then>
+		</if>
+		<copy file="${baseoutdir}/${rel}/${project}.zip" todir="${archivedir}" overwrite="true"/>
+		<copy file="${baseoutdir}/${rel}/${project}.zip" todir="${cibase}/userContent/${outdir}" overwrite="true"/>
+		<echo message="${project}.zip is available at ${archivedir}"/>
+	</target>
+
+	<target name="CreateLPPatch">
+		<delete dir="${baseoutdir}/${rel}/patch"/>
+
+		<copy todir="${builddir}/${project}/Sungard.GlobalPlus.ListProcessing.ServiceHost.csproj_deploy/Release/templates" preservelastmodified="true" overwrite="true">
+			<fileset dir="${builddir}/${project}/${project}.Export/templates"/>
+		</copy>
+		<if>
+			<available file="${builddir}/Sungard.GlobalPlus.Common/Xml/Xsl" type="dir"/>
+			<then>
+				<copy todir="${builddir}/${project}/Sungard.GlobalPlus.ListProcessing.ServiceHost.csproj_deploy/Release/Xsl" preservelastmodified="true" overwrite="true">
+				<fileset dir="${builddir}/Sungard.GlobalPlus.Common/Xml/Xsl"/>
+				</copy>
+			</then>
+			<else>
+				<echo message="${builddir}/Sungard.GlobalPlus.Common/Xml/Xsl does not exists, skipping copy." />
+			</else> 
+		</if>
+		<copy todir="${baseoutdir}/${rel}/patch/${project}" preservelastmodified="true" >
+			<fileset dir="${builddir}/${project}/${project}.ServiceHost.csproj_deploy/Release"/>
+		</copy>
+	</target>
+
+	<target name="WrapupLPPatch" depends="CreateLPPatch">
+		<delete file="${baseoutdir}/${rel}/${project}.zip" />
+		<zip destfile="${baseoutdir}/${rel}/${project}.zip" basedir="${baseoutdir}/${rel}/patch" />
+	</target>
+
+	<target name="CreateWFPatch">
+		<delete dir="${baseoutdir}/${rel}/patch"/>
+		<copy file="${builddir}/${project}/${project}.ServiceHost/ipp.config" todir="${builddir}/${project}/${project}.ServiceHost.csproj_deploy/Release" preservelastmodified="true" overwrite="true" />
+		<delete>
+			<fileset dir="${builddir}/${project}/${project}.ServiceHost.csproj_deploy/Release" includes="*.snk" />
+		</delete>
+		<copy todir="${baseoutdir}/${rel}/patch/${project}" preservelastmodified="true" >
+			<fileset dir="${builddir}/${project}/${project}.ServiceHost.csproj_deploy/Release"/>
+		</copy>
+	</target>
+
+	<target name="WrapupWFPatch" depends="CreateWFPatch">
+		<delete file="${baseoutdir}/${rel}/${project}.zip" />
+		<zip destfile="${baseoutdir}/${rel}/${project}.zip" basedir="${baseoutdir}/${rel}/patch" />
+	</target>
+
+	<target name="WrapupAMIPatch" depends="CreatePatch, RemoveCfg, CopyAMIResources, UpdateHelp, CreateEmptyDir">
+		<delete file="${baseoutdir}/${rel}/${project}.zip" />
+		<zip destfile="${baseoutdir}/${rel}/${project}.zip" basedir="${baseoutdir}/${rel}/patch" />
+	</target>
+
+	<target name="CopyAMIResources">
+		<for list="${amiresourcefiles}" delimiter=";" param = "val">
+			<sequential>
+				<copy file="${builddir}/${resourcetype}Resources/@{val}" todir="${baseoutdir}/${rel}/patch/${project}" preservelastmodified="true" overwrite="true"/>
+			</sequential>
+		</for>
+	</target>
+	
+	<target name="CreateEmptyDir" if="createemptydir" >
+		<for list="${createemptydir}" delimiter=";" param = "directory">
+			<sequential>
+				<mkdir dir="${baseoutdir}/${rel}/patch/${project}/@{directory}" />
+			</sequential>
+		</for>
+	</target>
+
+	<target name="UpdateAddvThemes">
+		<delete dir="${baseoutdir}/${rel}/patch/${project}/App_Themes/Default" />
+		<copy todir="${baseoutdir}/${rel}/patch/${project}/App_Themes">
+			<fileset dir="${builddir}/${standardtheme}/MyThemes" />
+		</copy>
+	</target>
+
+	<target name="UpdateHelp" if="updatehelp">
+		<delete dir="${baseoutdir}/${rel}/patch/${project}/Help/English" />
+		<copy todir="${baseoutdir}/${rel}/patch/${project}/Help/English" overwrite="true">
+			<fileset dir="C:/scm/help/WebHelp"/>
+		</copy>
+	</target>
+
+	<target name="RenameCfg" if="renamecfg">
+		<for list="${renamecfg}" delimiter=";" param="renamecandidate">
+			<sequential>
+				<for list="@{renamecandidate}" delimiter=":" param="file">
+					<sequential>
+						<property name="precfg" value="@{file}" />
+						<var name="postcfg" unset="true"/>
+						<property name="postcfg" value="@{file}" />
+					</sequential>
+				</for>
+				<move file="${baseoutdir}/${rel}/patch/${project}/${precfg}" tofile="${baseoutdir}/${rel}/patch/${project}/${postcfg}" />
+			</sequential>
+		</for>
+	</target>
+
+<!-- Update svn information in cfg file -->
+<if>
+<equals arg1="${svnrepo.is.set}" arg2="true" />
+<then>
+	<echo message="workspacerev=${svnrev}" file="cfg/${svnrepo}.cfg" force="true" />
+</then>
+</if>
+
+</project>

@@ -1,0 +1,126 @@
+<!-- Change History-->
+
+<!-- 08/01/2013   Dharmendra Kumar     Added testpatch target to run daily test builds.    -->
+<!-- 07/24/2013   Dharmendra Kumar     Added support to zip the hardcode.                  -->
+<!-- 06/27/2013   Dharmendra Kumar     Added support to hardcode build using bat file      -->
+<!-- 06/12/2012   Dharmendra Kumar     Initial Coding to Automate Charlotte Hardcode build -->
+<!-- rev=2013.1.3-->
+
+<project name="clthcbuild" default="vsshistory" basedir="..">
+<taskdef resource="net/sf/antcontrib/antcontrib.properties"/>
+<taskdef name="stringutil" classname="ise.antelope.tasks.StringUtilTask"/>
+
+<property file="cfg/hc-clt-${rel}.cfg"/>
+
+	<tstamp> <format property="timestampHHmm" pattern="yyMMddHHmm" /> </tstamp>
+	<tstamp> <format property="timestamp" pattern="yyMMdd" /> </tstamp>
+	<tstamp> <format property="yearstamp" pattern="yyyy" /> </tstamp>
+	<tstamp> <format property="monthstamp" pattern="MM" /> </tstamp>
+	<tstamp> <format property="daystamp" pattern="dd" /> </tstamp>
+	<tstamp> <format property="timenow" pattern="MM/dd/yyyy hh:mm aa"/> </tstamp>
+	
+	<target name="vsshistory">
+		<vsshistory vsspath="${vssupgradedir}" 
+    		serverPath="${ssupgradedir}"
+    		recursive="true"
+		/>
+	</target>
+
+	<target name="prebuild">
+		<property name="targetdir" value="${workdir}/Releases/clt${timestamp}" />
+		<if>
+			<available file="${targetdir}/UpGrade" type="dir"/>
+			<then>
+				<!--fail message="Target Directory ${targetdir}/UpGrade Exists..!"/-->
+				<move file="${targetdir}/UpGrade" tofile="${targetdir}/UpGrade-${timestampHHmm}" />
+				<mkdir dir="${targetdir}/UpGrade" />
+			</then>		
+			<else>
+				<mkdir dir="${targetdir}/UpGrade" />
+			</else>
+		</if>
+	</target>
+	
+	<target name="vsscheckout-upgrade">
+		<vsscheckout	vsspath="${vssupgradedir}"
+						serverPath="${ssupgradedir}"
+						localpath="${targetdir}/UpGrade"
+						recursive="true"
+						filetimestamp="modified"
+		/>
+		<delete>
+			<fileset dir="${targetdir}/UpGrade" defaultexcludes="no" includes="**/*.scc" />
+		</delete>
+	</target>
+	
+	<target name="vssget-upgrade">
+		<vssget		vsspath="${vssupgradedir}"
+					serverPath="${ssupgradedir}"
+					localpath="${targetdir}/UpGrade"
+					recursive="true"
+					filetimestamp="modified"
+		/>
+		<delete>
+			<fileset dir="${targetdir}/UpGrade" defaultexcludes="no" includes="**/*.scc" />
+		</delete>
+	</target>
+		
+	<target name="update-hardcode-config">
+		<copy file="template\${rel}\HARDCODE.001" todir="${workdir}\HardCode" overwrite="true" />
+		<replace file="${workdir}\HardCode\HARDCODE.001">
+			<replacefilter token="@yyyy@" value="${yearstamp}" />
+			<replacefilter token="@MM@" value="${monthstamp}" />
+			<replacefilter token="@dd@" value="${daystamp}" />
+		</replace>
+		<replaceregexp	file="${targetdir}/UpGrade/DBCnv.bat"
+			match="Set V=(.*)"
+			replace="Set V=${yearstamp}.${monthstamp}.${daystamp}"
+			byline="true"
+		/>
+	</target>
+	
+	<target name="hardcode-build" >
+		<exec executable="cmd" dir="${metamakedir}" failonerror="true">
+			<arg value="/c" />
+			<arg value="RunHC.bat ${hcservername},${hcdbname},${targetdir},01,${workdir}/HardCode" />
+		</exec>
+	</target>
+	
+	<target name="vsscheckin-upgrade">
+		<vsscheckin	vsspath="${vssupgradedir}"
+					serverPath="${ssupgradedir}"
+					localpath="${targetdir}/UpGrade"
+		/>
+		<delete>
+			<fileset dir="${targetdir}/UpGrade" defaultexcludes="no" includes="**/*.scc" />
+		</delete>
+	</target>
+	
+	<target name="wrapuppatch" depends="prebuild, vsscheckout-upgrade, update-hardcode-config, hardcode-build, vsscheckin-upgrade" >
+		<if>
+		<available file="${targetdir}/HardCode.zip" />
+		<then>
+			<echo message="HardCode.zip file exists." />
+		</then>
+		<else>
+			<zip destfile="${targetdir}/HardCode.zip" basedir="${targetdir}" includes="HardCode.ATD" />		
+		</else>
+		</if>
+		<delete file="${archievedir}/${rel}/hc-clt.zip" />
+		<zip destfile="${archievedir}/${rel}/hc-clt.zip" basedir="${targetdir}/UpGrade" />
+	</target>
+	
+	<target name="testpatch" depends="prebuild, vssget-upgrade, update-hardcode-config, hardcode-build" >
+		<if>
+		<available file="${targetdir}/HardCode.zip" />
+		<then>
+			<echo message="HardCode.zip file exists." />
+		</then>
+		<else>
+			<zip destfile="${targetdir}/HardCode.zip" basedir="${targetdir}" includes="HardCode.ATD" />		
+		</else>
+		</if>
+		<delete file="${archievedir}/${rel}/hc-clt.zip" />
+		<zip destfile="${archievedir}/${rel}/hc-clt.zip" basedir="${targetdir}/UpGrade" />
+	</target>
+</project>

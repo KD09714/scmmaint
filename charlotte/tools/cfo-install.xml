@@ -1,0 +1,685 @@
+<!-- Change History-->
+
+<!-- 11/19/2013   Dharmendra Kumar      Making response file release specific                         -->
+<!-- 11/16/2013   Dharmendra Kumar      Enhanced deployment script to perform full install - 3        -->
+<!-- 11/14/2013   Dharmendra Kumar      Enhanced deployment script to perform full install - 2        -->
+<!-- 11/05/2013   Dharmendra Kumar      Enhanced deployment script to perform full install            -->
+<!-- 10/28/2013   Dharmendra Kumar      Added task to generate report for files delivered for the first time -->
+<!-- 10/25/2013   Dharmendra Kumar      Added support to validate any older files getting delivered   -->
+<!--                                    in new build. Added reports generation functionality.         -->
+<!-- 10/11/2013   Dharmendra Kumar      Added check_status at the end of hardcode install.            -->
+<!-- 08/06/2013   Dharmendra Kumar      Added support to install remote databases.                    -->
+<!-- 07/03/2013   Dharmendra Kumar      Added target check-status to make build failed in case of     -->
+<!--                                     error in logfile                                             -->
+<!-- 06/25/2013   Dharmendra Kumar      Added Support to install procedure & views only in db-install -->
+<!-- 06/25/2013   Dharmendra Kumar      Added Support to install hardcode zip only in hc-install      -->
+<!-- 06/12/2013   Dharmendra Kumar      Initial Coding to Automate Charllote CFO Installation         -->
+<!-- rev=2013.1.11-->
+
+<project name="cfoinstall" default="preinstall" basedir="..">
+<taskdef resource="net/sf/antcontrib/antcontrib.properties"/>
+<taskdef name="grep" classname="ise.antelope.tasks.Find"/>
+<property file="cfg/install-${rel}.cfg"/>
+<property file="cfg/${database}.cfg"/>
+<property environment="env" />
+		
+	<target name="db-extractpackage" if="zipdelivery" >
+		<unzip src="${dbpackagesource}\db-clt.zip" dest="${packagesourcebase}\CLT\SQL" overwrite="true" />
+	</target>
+	
+	<target name="fe-extractpackage" if="zipdelivery" >
+		<unzip src="${fepackagesource}\fe-clt.zip" dest="${packagesourcebase}\Realtime" overwrite="true" />
+	</target>
+	
+	<target name="hc-extractpackage" if="zipdelivery" >
+		<unzip src="${hcpackagesource}\hc-clt.zip" dest="${packagesourcebase}\CLT\UPGRADE" overwrite="true" />
+	</target>
+	
+	<target name="preinstall">
+		<!-- Map M drive first -->
+		<exec executable="cmd" >
+			<arg value="/c" />
+			<arg value="net use ${deploydrive} /d" />
+		</exec>
+		
+		<propertyregex property="deploybase1"
+			input="${deploybase}"
+			regexp=":"
+			replace="$"
+			global="true" 
+		/>
+		
+		<exec executable="cmd" failonerror="true">
+			<arg value="/c" />
+			<arg value="net use ${deploydrive} \\${deployserver}\${deploybase1}" />
+		</exec>
+		
+		<echo message="cd /d ${deploydrive}/nmf ${line.separator} setbyte ${relbyte} ${line.separator} setbyte" file="setbyte-${rel}.bat" />
+		<exec executable="cmd" failonerror="true">
+			<arg value="/c"/>
+			<arg value="setbyte-${rel}.bat"/>
+		</exec>
+		
+		<!-- Check for valid OS -->
+		<property name="processor_arc" value="${env.PROCESSOR_ARCHITECTURE}" />
+		<echo message="PROCESSOR_ARCHITECTURE : ${processor_arc}" />
+		<if>
+			<equals arg1="${processor_arc}" arg2="" />
+			<then>
+				<fail message="COMMPC Operating System is Windows 9x which is not supported with this version of Charlotte." />
+			</then>
+		</if>
+		<copy todir="${deploydrive}/sql_A" file="cfg/${database}/sqlinit.bat" force="true" overwrite="true" />
+		
+		<!-- ChkAppDirs -->
+		<mkdir dir="${deploydrive}/backup" />
+		<mkdir dir="${deploydrive}/nmf" />
+		<mkdir dir="${deploydrive}/nmf/backup" />
+		
+		<if>
+			<available file="${deploydrive}/nmf/ATCT003A.ATD" />
+			<then>
+				<echo message="Not a new installation." />
+			</then>
+			<else>
+				<antcall target="newinstallation-cfg" />
+			</else>
+		</if>
+		
+		<!-- CheckProcStatus -->
+		<exec executable="cmd" failonerror="true" outputproperty="db-processing">
+			<arg value="/c"/>
+			<arg value="osql /S${atservername} /d${atdbname} /U${atdboname} /P${atdbopass} /Q &quot; select bank_reformat_ind from BANK_CONTROL &quot;" />
+		</exec>
+		
+		<if>
+		<contains string="${db-processing}" substring="0" />
+		<else>
+			<fail message="The database is currently in a processing state, Installation of the update is not allowed at this point." />
+		</else>
+		</if>
+		
+		<!-- InstallApps -->
+		<copy file="${packagedestinationbase}/at/software/VerChk.bat" todir="${deploydrive}/nmf" preservelastmodified="true" />
+		<copy file="${packagedestinationbase}/at/software/CompVer.exe" todir="${deploydrive}/nmf" preservelastmodified="true" />
+		
+		<antcall target="at-install" />
+		<antcall target="clt-install" />
+		<antcall target="oldoc-install" />
+		
+		<if>
+		<equals arg1="${installbny}" arg2="yes" />
+		<then>
+			<echo message="Installing BNY" />
+		</then>
+		</if>
+		
+		<if>
+		<equals arg1="${installexped}" arg2="yes" />
+		<then>
+			<echo message="Installing Exped .." />
+			<mkdir dir="${deploydrive}/nmf/exp-comw" />
+			<copy todir="${deploydrive}/nmf/exp-comw" >
+				<fileset dir="${packagedestinationbase}/EXPED/WIN-PCM" >
+					<include name="**/*" />
+				</fileset>
+			</copy>
+			<copy file="${deploydrive}/nmf/exp-comw/maincfg.atcx" tofile="${deploydrive}/nmf/exp-comw/maincfg.atc" force="true" />
+			<echo message="The installation of Expediter Communications software for use with the Charlotte System is now complete." />
+		</then>
+		</if>
+	</target>
+	
+	<target name="newinstallation-cfg">
+		<echo message="New Installation, Write further steps for new installation pending - nmf\DosToClt.new" />
+	</target>
+	
+	<target name="check-version">
+		<!-- Nothing to do in regular install -->
+	</target>
+	
+	<target name="fe-install" depends="fe-extractpackage, update-repository, cleanup-qa-delivery, preinstall">
+		<mkdir dir="${deploydrive}/Realtime" />
+		<echo message="Deleting everything except web.config." />
+		
+		<delete includeemptydirs="true">
+			<fileset dir="${deploydrive}/Realtime" excludes="web.config" defaultexcludes="false"/>
+		</delete>
+		<copy todir="${deploydrive}/Realtime" preservelastmodified="true">
+			<fileset dir="${packagedestinationbase}/Realtime" includes="**/*" excludes="web.config" />
+		</copy>
+		
+		<copy todir="${deploydrive}/Realtime" preservelastmodified="true">
+			<fileset dir="${packagedestinationbase}/RTConfig" includes="**/*" excludes="web.config" />
+		</copy>
+		
+		<exec executable="cmd" failonerror="true">
+			<arg value="/c"/>
+			<arg value="cScript /NoLogo ${deploydrive}/Realtime/WebConfigMigrate.vbs ${deploydrive}/Realtime/web.config ${deploydrive}/Realtime/web.config.tmp"/>
+		</exec>
+	</target>
+	
+	<target name="hc-install" depends="hc-extractpackage, update-repository, cleanup-qa-delivery, preinstall">
+	<!-- StartUpdate -->
+		<delete>
+			<fileset dir="${deploydrive}/nmf">
+				<include name="extract*.err" />
+				<include name="extract*.log" />
+			</fileset>
+		</delete>
+		
+		<!-- SQLVerChk -->
+		<exec executable="cmd" failonerror="true" outputproperty="db-version">
+			<arg value="/c"/>
+			<arg value="osql /S${atservername} /U${atdboname} /P${atdbopass} /Q &quot; select @@version &quot;" />
+		</exec>
+		<if>
+		<contains string="${db-version}" substring="9.00" />
+		<then>
+			<echo message="Sql server version is 2005." />
+			<property name="sqlserverver" value="SQL2K5" />
+		</then>
+		<else>
+			<if>
+			<contains string="${db-version}" substring="10." />
+			<then>
+				<echo message="Sql server version is 2008." />
+				<property name="sqlserverver" value="SQL2K5" />
+			</then>		
+			<else>
+				<fail messane="Error: The latest version of SQL Server is NOT installed, Please install SQL Server 2005 or 2008." />
+			</else>
+			</if>
+		</else>
+		</if>
+		
+		<!-- SQLUtilsChk -->
+		<exec executable="cmd" failonerror="true">
+			<arg value="/c"/>
+			<arg value="${deploydrive}\nmf\compver.exe ${env.windir}\system32\sqlncli.dll/2005.90.1399.0" />
+		</exec>
+		<if>
+		<available file="BADVER.TXT" />
+		<then>
+			<exec executable="cmd" failonerror="true">
+				<arg value="/c"/>
+				<arg value="${deploydrive}\nmf\compver.exe ${env.windir}\system32\sqlncli10.dll/2007.100.1600.22" />
+			</exec>
+			<if>
+			<available file="BADVER.TXT" />
+			<then>
+				<exec executable="cmd" failonerror="true">
+					<arg value="/c"/>
+					<arg value="${deploydrive}\nmf\compver.exe ${env.windir}\system32\sqlncli10.dll/2007.100.2531.0" />
+				</exec>
+				<if>
+				<available file="BADVER.TXT" />
+				<then>
+					<exec executable="cmd" failonerror="true">
+						<arg value="/c"/>
+						<arg value="${deploydrive}\nmf\compver.exe ${env.windir}\system32\sqlncli10.dll/2009.100.1600.1" />
+					</exec>
+					<if>
+					<available file="BADVER.TXT" />
+					<then>
+						<fail message="Error: The SQL Server Client Utilities on this PC are not the latest version, Please update the SQL Client Utilities on this machine to match the versionyou are running on the Server." />
+					</then>
+					<else>
+						<property name="sqlcommpcver" value="SQL2K5" />
+					</else>
+					</if>
+				</then>
+				<else>
+						<property name="sqlcommpcver" value="SQL2K5" />
+				</else>
+				</if>
+			</then>
+			<else>
+				<property name="sqlcommpcver" value="SQL2K5" />
+			</else>
+			</if>
+		</then>
+		<else>
+			<property name="sqlcommpcver" value="SQL2K5" />
+		</else>
+		</if>
+		
+		<!-- SoftwareInstalls -->
+		<if>
+			<equals arg1="${sqlserverver}" arg2="SQL2K5" />
+			<then>
+				<exec executable="cmd" dir="${deploydrive}\sql_A" failonerror="true" >
+					<arg value="/c" />
+					<arg value="DBCnv.bat" />
+				</exec>
+			</then>
+		</if>
+		
+		<loadfile property="ddlloadlog"
+			srcfile="${deploydrive}\sql_A\UpGrade.log" />
+		<echo message="" />
+		<echo message="Database Upgrage logs are as follows ..." />
+		<echo message="${ddlloadlog}" />
+		
+		<loadfile property="dbloadlog"
+			srcfile="${deploydrive}\sql_A\DBLoad.log" />
+		<echo message="" />
+		<echo message="DB Upgrage logs are as follows ..." />
+		<echo message="${dbloadlog}" />
+		
+		<echo message="Resetting Reformat Indicators to 0 after DBCnv in ${atdbname}" />
+		<antcall target="resetrefindicator" />
+		<antcall target="check-status" />
+	</target>
+	
+	<target name="at-install">
+		<if>
+		<available file="${deploydrive}/nmf/atdopen.exe" />
+		<else>
+			<copy file="${packagedestinationbase}\nmf\atdopen.exe" todir="${deploydrive}/nmf"  preservelastmodified="true" />
+		</else>
+		</if>
+		<!-- CloseNet -->
+		<exec executable="cmd" dir="${deploydrive}\nmf" failonerror="true" >
+			<arg value="/c" />
+			<arg value="atdopen.exe" />
+			<arg value="*.atd" />
+			<arg value="*.wrk" />
+			<arg value="*.tmp" />
+			<arg value="*.pag" />
+		</exec>
+		
+		<if>
+		<available file="${deploydrive}/nmf/fileopen.wrk" />
+			<else>
+				<!-- DeleteUnNeeded -->
+				<loadfile property="file" srcfile="${packagedestinationbase}\at\cleanup.txt"/>
+				<for param="line" list="${file}" delimiter="${line.separator}">
+				<sequential>
+					<delete verbose="true" >
+						<fileset dir="${deploydrive}\nmf" >
+							<include name="@{line}" />
+						</fileset>
+					</delete>
+				</sequential>
+				</for>
+				
+				<!-- RemoveNSAE -->
+				<delete dir="${deploydrive}\nmf\nsae" verbose="true" />
+				
+				<!-- CopyFiles-->
+				<copy todir="${deploydrive}\nmf" verbose="true">
+					<fileset dir="${packagedestinationbase}\at\Software">
+						<include name="*.*" />
+						<include name="Custody/*" />
+					</fileset>
+				</copy>
+				
+				<!-- Install custom software -->
+				<if>
+				<available file="${deploydrive}\nmf\atd9001.exe" />
+				<then>
+					<copy file="${packagedestinationbase}\at\Software\specials\atd9001.exe" todir="${deploydrive}\nmf" preservelastmodified="true"/>
+				</then>
+				</if>
+				
+				<if>
+				<available file="${deploydrive}\nmf\atd9010.exe" />
+				<then>
+					<copy file="${packagedestinationbase}\at\Software\specials\atd9010.exe" todir="${deploydrive}\nmf" preservelastmodified="true"/>
+				</then>
+				</if>
+				
+				<if>
+				<available file="${deploydrive}\nmf\atd9011.exe" />
+				<then>
+					<copy file="${packagedestinationbase}\at\Software\specials\atd9011.exe" todir="${deploydrive}\nmf" preservelastmodified="true"/>
+				</then>
+				</if>
+				
+				<!-- Put phone number back in DayTrans script file sendday.sgs -->
+				<if>
+				<available file="${deploydrive}\nmf\ATD909.ATD" />
+				<then>
+					<exec executable="cmd" dir="${deploydrive}\nmf" failonerror="true">
+						<arg value="/c"/>
+						<arg value="atd909 /i" />
+					</exec>
+				</then>
+				</if>
+				
+				<if>
+				<available file="${deploydrive}\nmf\pdfprint.exe" />
+				<then>
+					<!--exec executable="cmd" dir="${deploydrive}\nmf" failonerror="true">
+						<arg value="/c"/>
+						<arg value="pdfprint.exe &quot;-$$&quot; 	&quot;66XSD5234455P5PWET58&quot;" />
+					</exec-->
+				</then>
+				<else>
+					<echo message="Cannot find file PdfPrint.exe" />
+				</else>
+				</if>
+			</else>
+		</if>
+	</target>
+	
+	<target name="clt-install">
+		<mkdir dir="${deploydrive}/sql_A" />
+		<mkdir dir="${deploydrive}/Reports_A" />
+		<mkdir dir="${deploydrive}/Reports_A/AFS" />
+		<mkdir dir="${deploydrive}/Reports_A/AFSFiles" />
+		<mkdir dir="${deploydrive}/Reports_A/AFSPrint" />
+		<mkdir dir="${deploydrive}/Reports_A/AFSPrint" />
+		<mkdir dir="${deploydrive}/Reports_A/Auto" />
+		<mkdir dir="${deploydrive}/Reports_A/MF" />
+		
+		<delete>
+			<fileset dir="${deploydrive}\sql_A" >
+				<exclude name="sqlinit.bat" />
+				<exclude name="setsapw.bat" />
+			</fileset>
+		</delete>
+		
+		<copy todir="${deploydrive}\sql_A" preservelastmodified="true" >
+			<fileset dir="${packagedestinationbase}\CLT\SQL">
+				<exclude name="sqlinit.bat" />
+				<exclude name="setsapw.bat" />
+			</fileset>
+		</copy>
+				
+		<copy todir="${deploydrive}\sql_A" preservelastmodified="true" >
+			<fileset dir="${packagedestinationbase}\CLT\UPGRADE">
+				<exclude name="sqlinit.bat" />
+				<exclude name="setsapw.bat" />
+			</fileset>
+		</copy>
+		
+	<!-- :NavInstaller   -->
+		<echo message="Now creating the Navigator Workstation Installer." />
+		
+		<delete dir="${deploydrive}/NAV" />
+		<mkdir dir="${deploydrive}/NAV" />
+		
+		<copy todir="${deploydrive}/NAV" >
+			<fileset dir="${packagedestinationbase}/NAV" >
+				<include name="**/*" />
+			</fileset>
+		</copy>
+		
+		<delete dir="${deploydrive}/NAV/odbc65" />
+	</target>
+	
+	<target name="oldoc-install">
+		<delete dir="${deploydrive}/Charlotte Documentation" />
+		<mkdir dir="${deploydrive}/Charlotte Documentation" />
+		
+		<copy todir="${deploydrive}/Charlotte Documentation" >
+			<fileset dir="${packagedestinationbase}/OlDoc">
+				<include name="**/*" />
+			</fileset>
+		</copy>
+		
+		<exec executable="cmd" failonerror="true" outputproperty="custody_ind">
+			<arg value="/c"/>
+			<arg value="osql /S${atservername} /d${atdbname} /U${atdboname} /P${atdbopass} /Q &quot; select custody_ind  from general_data &quot;" />
+		</exec>
+		
+		<if>
+		<contains string="${custody_ind}" substring="0" />
+		<then>
+			<echo message="Installation of the Online Documentation is now complete..." />
+		</then>
+		<else>
+			<delete dir="${deploydrive}/Custody Documentation" />
+			<mkdir dir="${deploydrive}/Custody Documentation" />
+		
+			<copy todir="${deploydrive}/Custody Documentation" >
+				<fileset dir="${packagedestinationbase}/CusDoc">
+					<include name="**/*" />
+				</fileset>
+		</copy>
+		</else>
+		</if>
+	</target>
+	
+	<target name="db-install" depends="db-extractpackage, update-repository, cleanup-qa-delivery, preinstall">
+		<delete file="${deploydrive}\sql_A\loadview.tmp" failonerror="false" />
+		<echo message="Checking Reformat Indicator before running BLDVIEW for ${atdbname} " />
+		
+		<antcall target="getflag" />
+				
+		<echo message="" />
+		<echo message="Running BLDVIEW." />
+		<echo message="" />
+		<exec executable="cmd" dir="${deploydrive}\sql_A" failonerror="true" >
+			<arg value="/c" />
+			<arg value="bldview.bat" />
+		</exec>
+		
+		<loadfile property="sploadlog"
+			srcfile="${deploydrive}\sql_A\isql.log" />
+		<echo message="" />
+		<echo message="Procedure and view update logs are as follows ..." />
+		<echo message="${sploadlog}" />
+		
+		<echo message="Resetting Reformat Indicators to 0 after BLDVIEW in ${atdbname}" />
+		<antcall target="resetrefindicator" />
+		
+		<echo message="Checking Reformat Indicator after resetting indicator after running BLDVIEW for ${atdbname}" />
+		<antcall target="getflag" />
+		
+		<echo message="call sqlinit.bat ${line.separator}" file="${deploydrive}\sql_A\sqllog.bat" />
+		<echo message="call sqllog.exe" file="${deploydrive}\sql_A\sqllog.bat" append="true" />
+		<exec executable="cmd" failonerror="true" dir="${deploydrive}\sql_A">
+			<arg value="/c" />
+			<arg value="sqllog.bat" />
+		</exec>
+		<delete file="${deploydrive}\sql_A\sqllog.bat" />
+		
+		<loadfile property="dbloadlog"
+			srcfile="${deploydrive}\sql_A\DBLoad.log" />
+		<echo message="" />
+		<echo message="DB Upgrage logs are as follows ..." />
+		<echo message="${dbloadlog}" />
+		<antcall target="check-status" />
+	</target>
+	
+	<target name="check-status">
+		<grep in="${dbloadlog}" regex="Error " property="buildstatus"/>
+		<if>
+			<equals arg1="${buildstatus}" arg2="Error " />
+			<then>
+				<fail message="Deployment Completed With Errors. Please check the log for Errors." />
+			</then>
+			<else>
+				<echo message="Deployment Successful." />
+			</else>
+		</if>
+	</target>
+	
+	<target name="getflag">
+		<if>
+		<equals arg1="${atservername}" arg2="${deployserver}" />
+		<then>
+			<exec executable="cmd" failonerror="true">
+				<arg value="/c"/>
+				<arg value="osql /E /S${atservername} /d${atdbname} /Q &quot; select bank_no, bank_id, bank_reformat_ind from bank_control &quot;" />
+			</exec>
+		</then>
+		<else>
+			<exec executable="cmd" failonerror="true">
+				<arg value="/c"/>
+				<arg value="osql /S${atservername} /d${atdbname} /U${atdboname} /P${atdbopass} /Q &quot; select bank_no, bank_id, bank_reformat_ind from bank_control &quot;" />
+			</exec>
+		</else>
+		</if>
+	</target>
+	
+	<target name="resetrefindicator">
+	<if>
+		<equals arg1="${atservername}" arg2="${deployserver}" />
+		<then>
+			<exec executable="cmd" failonerror="true">
+				<arg value="/c"/>
+				<arg value="osql /E /S${atservername} /h-1 /d${atdbname} /H${atdboname} /n /i${deploydrive}\sql_A\BKCONIND.SQL" />
+			</exec>
+		</then>
+		<else>
+			<exec executable="cmd" failonerror="true">
+				<arg value="/c"/>
+				<arg value="osql /S${atservername} /h-1 /d${atdbname} /U${atdboname} /P${atdbopass} /n /i${deploydrive}\sql_A\BKCONIND.SQL" />
+			</exec>
+		</else>
+	</if>
+	</target>
+	
+	<target name="generate-reports">
+		<fileset id="file.list" dir="${packagesourcebase}" >
+			<include name="**/*" />
+			<exclude name="**/Thumbs.db" />
+		</fileset>
+		<property name="list.files" refid="file.list"/>
+		
+		<echo message="${line.separator}Repository Location : ${packagedestinationbase} ${line.separator} " />
+		<echo message="Below files are present in ${packagesourcebase} ${line.separator} " />
+		<for list="${list.files}" delimiter=";" param = "filewithpath">
+			<sequential>
+				<echo message="@{filewithpath}" />
+				<property name="filesfound" value="true" />
+			</sequential>
+		</for>
+		
+		<if>
+		<equals arg1="${filesfound}" arg2="true" />
+		<then>
+			<echo message="${line.separator}" />
+		</then>
+		<else>
+			<echo message="${line.separator}NONE...." />
+		</else>
+		</if>
+		
+		<echo message="${line.separator}Below files are Delivered for the first time in ${packagesourcebase}${line.separator}${line.separator}" />
+		<for list="${list.files}" delimiter=";" param = "filewithpath">
+			<sequential>
+				<if>
+				<available file="${packagedestinationbase}/@{filewithpath}" />
+				<else>
+					<echo message="@{filewithpath}" />
+					<property name="firsttimefound" value="true" />
+				</else>
+				</if>
+			</sequential>
+		</for>
+		
+		<if>
+		<equals arg1="${firsttimefound}" arg2="true" />
+		<then>
+			<echo message="${line.separator}" />
+		</then>
+		<else>
+			<echo message="${line.separator}NONE...." />
+		</else>
+		</if>
+		
+		<echo message="${line.separator}Below files are Older in ${packagesourcebase}${line.separator}${line.separator}" />
+		<for list="${list.files}" delimiter=";" param = "filewithpath">
+			<sequential>
+				<if>
+				<available file="${packagedestinationbase}/@{filewithpath}" />
+				<then>
+					<var name="isUpToDate" unset="true" />
+					<uptodate property="isUpToDate" srcfile="${packagedestinationbase}/@{filewithpath}" targetfile="${packagesourcebase}/@{filewithpath}"/>
+					<if>
+					<equals arg1="${isUpToDate}" arg2="true" />
+					<else>
+						<echo message="@{filewithpath}" />
+						<property name="olderfound" value="true" />
+					</else>
+					</if>
+				</then>
+				</if>
+			</sequential>
+		</for>
+		
+		<if>
+		<equals arg1="${olderfound}" arg2="true" />
+		<then>
+			<if>
+			<equals arg1="${ignoreolderfiles}" arg2="true" />
+			<else>			
+				<fail message="Older files found in ${packagesourcebase}. Please fix it manually and run the install again.." />
+			</else>
+			</if>
+		</then>
+		<else>
+			<echo message="${line.separator}NONE...." />
+		</else>
+		</if>
+	</target>
+	
+	<target name="update-repository" depends="generate-reports" >
+		<copy todir="${packagedestinationbase}" preservelastmodified="true" verbose="true" overwrite="true" force="true">
+			<fileset dir="${packagesourcebase}">
+				<include name="**/*" />
+				<exclude name="**/Thumbs.db" />
+			</fileset>
+		</copy>
+	</target>
+	
+	<target name="cleanup-qa-delivery">
+		<delete verbose="true">
+			<fileset dir="${packagesourcebase}" >
+				<include name="**/*" />
+			</fileset>
+		</delete>
+	</target>
+	<target name="full-install" depends="hc-extractpackage, db-extractpackage, fe-extractpackage, update-repository, cleanup-qa-delivery, preinstall, hc-install, db-install, fe-install, nav-install">
+		<echo message="Setting release byte to ${relbyte} .." />
+		<exec executable="cmd" failonerror="true">
+			<arg value="/c"/>
+			<arg value="setbyte-${rel}.bat"/>
+		</exec>
+		
+		<echo message="Updating release byte ${relbyte} in database..." />
+		<exec executable="cmd" failonerror="true" >
+			<arg value="/c"/>
+			<arg value="osql /S${atservername} /d${atdbname} /U${atdboname} /P${atdbopass} /Q &quot; UPDATE CHARLOTTE_VERSION SET release_version_id = &apos;${relbyte}&apos; &quot;" />
+		</exec>
+		
+		<echo message="Updating Navigator version ${NAVVERSION} in database..." />
+		<exec executable="cmd" failonerror="true" >
+			<arg value="/c"/>
+			<arg value="osql /S${atservername} /d${atdbname} /U${atdboname} /P${atdbopass} /Q &quot; UPDATE CHARLOTTE_VERSION SET navigator_version_id =  &apos;${NAVVERSION}&apos; &quot;" />
+		</exec>
+		<echo message="Installation Completed for CFO Release ${rel}" />
+	</target>
+
+	<target name="nav-install">
+		<if>
+		<available file="${user.dir}/nav-setup-${rel}.iss" />
+		<then>
+			<copy file="${deploydrive}/NAV/Disk1/NAVVER.BAT" tofile="cfg/NAVVER.cfg" overwrite="true" force="true" />
+			<replaceregexp	file="cfg/NAVVER.cfg"
+				match="SET NAV"
+				replace="NAVVERSION"
+				byline="true"
+			/>
+			<property file="cfg/NAVVER.cfg" />
+			
+			<replaceregexp	file="${user.dir}/nav-setup-${rel}.iss"
+				match="Version=2(.*)"
+				replace="Version=${NAVVERSION}"
+				byline="true"
+			/>
+			<echo message="Running Navigator installer in Non Interactive mode...." />
+			<echo message="${deploydrive}\NAV\Disk1\setup.exe -s -a -s -f1&quot;${user.dir}\nav-setup-${rel}.iss&quot;" file="${user.dir}\nav-install.cmd" force="true" />
+			<exec executable="${user.dir}\nav-install.cmd" failonerror="true" />
+		</then>
+		<else>
+			<fail message="Response file does not exists, Please create Response file ${user.dir}\nav-setup-${rel}.iss and run the install again...!" />
+		</else>
+		</if>
+	</target>
+</project>

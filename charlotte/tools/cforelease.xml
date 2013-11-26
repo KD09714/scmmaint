@@ -1,0 +1,109 @@
+<!-- Change History-->
+
+<!-- 07/26/2013   Dharmendra Kumar     Force exclude Thumbs.db from copy deliverables. -->
+<!-- 07/16/2013   Dharmendra Kumar     Initial Coding to Automate copy of CFO Delivery -->
+<!-- rev=2013.1.1-->
+
+<project name="cforelease" default="copydeliverables" basedir="..">
+<taskdef resource="net/sf/antcontrib/antcontrib.properties"/>
+<taskdef name="stringutil" classname="ise.antelope.tasks.StringUtilTask"/>
+<property file="cfg/cforelease-${rel}.cfg"/>
+
+	<tstamp>
+    	<format property="timestamp" pattern="yyMMdd"/>
+	</tstamp>
+	<tstamp> <format property="timestampHHmm" pattern="yyMMddHHmm" /> </tstamp>
+	
+	<target name="prebuild">
+		<property name="targetdir" value="${sourcebase}/Releases/clt${timestamp}" />
+		<if>
+			<available file="${targetdir}/FE" type="dir"/>
+			<then>
+				<echo message="FE Package exists at ${targetdir}/FE" />
+				<property name="fedelivery" value="Y" />
+			</then>
+			<else>
+				<echo message="FE Package does not exists." />
+			</else>
+		</if>
+		
+		<if>
+			<available file="${targetdir}/UpGrade" type="dir"/>
+			<then>
+				<echo message="HardCode Package exists at ${targetdir}/UpGrade" />
+				<property name="hcdelivery" value="Y" />
+			</then>
+			<else>
+				<echo message="HardCode Package does not exists." />
+			</else>
+		</if>
+		
+		<if>
+			<available file="${targetdir}/SQL" type="dir"/>
+			<then>
+				<echo message="DB Package exists at ${targetdir}/SQL" />
+				<property name="dbdelivery" value="Y" />
+			</then>
+			<else>
+				<echo message="DB Package does not exists." />
+			</else>
+		</if>
+	</target>
+	
+	<target name="copydeliverables" depends="prebuild">
+		<antcall target="copy-FE-delivery" />
+		<antcall target="copy-HC-delivery" />
+		<antcall target="copy-DB-delivery" />
+		<antcall target="copy-CLT-documention" />
+		<antcall target="update-DropBox" />
+	</target>
+	
+	<target name="copy-FE-delivery" if="fedelivery">
+		<echo message="Delivering FE Package." />
+		<copy todir="${destinationbase}/RealTime" preservelastmodified="true" verbose="true">
+			<fileset dir="${targetdir}/FE" >
+				<exclude name="**/Thumbs.db" />
+			</fileset>
+		</copy>
+	</target>
+	
+	<target name="copy-HC-delivery" if="hcdelivery">
+		<echo message="Delivering HardCode Package." />
+		<copy todir="${destinationbase}/CLT/UPGRADE" preservelastmodified="true" verbose="true">
+			<fileset dir="${targetdir}/UpGrade" >
+				<exclude name="**/Thumbs.db" />
+			</fileset>
+		</copy>
+	</target>
+	
+	<target name="copy-DB-delivery" if="dbdelivery">
+		<echo message="Delivering DB Package." />
+		<copy todir="${destinationbase}/CLT/SQL" preservelastmodified="true" verbose="true">
+			<fileset dir="${targetdir}/SQL" >
+				<exclude name="**/Thumbs.db" />
+			</fileset>
+		</copy>
+	</target>
+	
+	<target name="copy-CLT-documention" if="delivercltdocs">
+		<echo message="Delivering Charlotte Documention." />
+		<copy todir="${destinationbase}/RealTime/Charlotte Documentation" preservelastmodified="true" >
+			<fileset dir="${cltdocrepo}" >
+				<exclude name="**/Thumbs.db" />
+			</fileset>
+		</copy>
+		<copy todir="${destinationbase}/RealTime/Charlotte Documentation" preservelastmodified="true" overwrite="true" force="true" verbose="true" >
+			<fileset dir="${destinationbase}/OlDoc" >
+				<exclude name="**/Thumbs.db" />
+			</fileset>
+		</copy>
+	</target>
+	<target name="update-DropBox">
+		<echo message="Updating MainFrame Dropbox." />
+		<copy todir="${dropboxdest}" preservelastmodified="true" >
+			<fileset dir="${targetdir}" >
+				<filename name="HardCode.zip" />
+			</fileset>
+		</copy>
+	</target>
+</project>

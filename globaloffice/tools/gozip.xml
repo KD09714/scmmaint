@@ -1,0 +1,123 @@
+<!-- Change History-->
+
+<!-- 08/06/2013     Dharmendra Kumar  Added support to exclude files during zip.                    -->
+<!-- 07/20/2013     Dharmendra Kumar  Added Support to package up Web Project.                      -->
+<!-- 07/12/2013     Dharmendra Kumar  Soft coded the cibase variable                                -->
+<!-- 05/30/2013     Dharmendra Kumar  Added support to distribute older freeze and copy patch files
+					                  for the use of globalplus patch processing					-->
+<!-- 03/20/2013     Dharmendra Kumar  Added code to create cfg file with freeze number in workspace -->
+<!-- 03/20/2013     Dharmendra Kumar  Added code to display freeze number during distribution.  -->
+<!-- 03/19/2013     Dharmendra Kumar  Added support to refresh build area with last freeze zip. -->
+<!-- 02/15/2013		Dharmendra Kumar  Initial Coding to Support backup of prod area.            -->
+<!-- rev=2013.0.8-->
+
+<project name="ZipProject" default="ZipProject" basedir="..">
+	<taskdef resource="net/sf/antcontrib/antcontrib.properties"/>
+
+	<property file="cfg/default.cfg"/>
+	<property file="cfg/${freezeproject}.freeze.cfg"/>
+	<property file="gopatch/patch.cfg"/>
+	<property file="cfg/${rel}.cfg"/>
+	<tstamp>
+		<format property="TimeStamp1" pattern="yyyyMMdd"/>
+		<format property="TimeStamp2" pattern="yyyyMMdd-HHmm"/>
+	</tstamp>
+	<echo message="TIMESTAMP : ${TimeStamp2}" />
+	<target name="ZipProject">
+		<!--delete>
+			<fileset dir="${cibase}/workspace/Zip-${project}" includes="*.zip" />
+		</delete-->
+		<if>
+        <available file="${cibase}/workspace/Freeze-${freezeproject}" type="dir" />
+            <then>
+				<move todir="${cibase}/backup">
+					<fileset dir="${cibase}/workspace/Freeze-${freezeproject}">
+						<include name="*.zip" />
+					</fileset>
+				</move>
+            </then>
+        </if>
+
+		<if>
+		<available file="D:/scm/Net/Prod/${project}" type="dir" />
+		<then>
+			<zip destfile="${cibase}/workspace/Freeze-${freezeproject}/${project}-${TimeStamp2}-${lastfreeze}.zip" basedir="D:/scm/Net/Prod/${project}" />
+			<delete file="cfg/${freezeproject}.freeze.cfg" />
+		</then>
+		<elseif>
+		<available file="D:/scm/Web/Prod/${project}" type="dir" />
+		<then>
+			<zip destfile="${cibase}/workspace/Freeze-${freezeproject}/${project}-${TimeStamp2}-${lastfreeze}.zip" defaultexcludes="no" excludes="${nozip}" basedir="D:/scm/Web/Prod/${project}/${subproject}" />
+			<delete file="cfg/${freezeproject}.freeze.cfg" />
+		</then>
+		</elseif>
+		<else>
+			<zip destfile="${cibase}/workspace/Freeze-${freezeproject}/${freezeproject}-${TimeStamp2}-${lastfreeze}.zip" basedir="D:/scm/Addv/Prod/${project}/${subproject}" />
+			<delete file="cfg/${freezeproject}.freeze.cfg" />
+		</else>
+		</if>
+	</target>
+
+	<condition property="freeze.is.set">
+		<isset property="basefreeze" />
+	</condition>
+
+	<target name="DistributeFreeze">
+        <path id="artifact.id.path">
+			<fileset dir="${cibase}/jobs/Freeze-${freezeproject}/workspace">
+				<include name="${project}-*.zip"/>
+            </fileset>
+        </path>
+        <property name="artifact.id.file" refid="artifact.id.path"/>
+
+		<if>
+		<equals arg1="${freeze.is.set}" arg2="true" />
+			<then>
+				<propertyregex property="artifact.id" input="${artifact.id.file}" regexp=".*${project}-(.*)-${basefreeze}.zip" select="\1" />
+			</then>
+			<else>
+				<propertyregex property="artifact.id" input="${artifact.id.file}" regexp=".*${project}-(.*).zip" select="\1" />
+			</else>
+		</if>
+
+        <propertyregex property="artifact.id" input="${artifact.id.file}" regexp=".*${project}-(.*).zip" select="\1" />
+        <!--echo message="artifact.id: ${artifact.id}"/ -->
+		
+		<if>
+            <available file="${cibase}/workspace/${freezeproject}" type="dir" />
+            <then>
+                <delete dir="${cibase}/workspace/${freezeproject}" />
+            </then>
+        </if>
+
+		<for list="${artifact.id}" delimiter="-" param = "val">
+			<sequential>
+				<var name="freeze" unset="true"/>
+				<property name="freeze" value="@{val}"/>
+			</sequential>
+		</for>
+
+		<if>
+		<equals arg1="${freeze.is.set}" arg2="true" />
+			<then>
+				<move file="C:/scm/gopatch/patch.cfg" tofile="C:/scm/gopatch/patch.cfg.${basefreeze}"/>
+				<echo message="Distributing ${basefreeze} freeze for ${project} .. " />
+				<unzip src="${cibase}/jobs/Freeze-${freezeproject}/workspace/${project}-${artifact.id}-${basefreeze}.zip" dest="${cibase}/workspace/${freezeproject}" />
+				<antcall target="CopyPatchFiles" />
+			</then>
+			<else>
+				<echo message="Distributing ${freeze} freeze for ${project} .. " />
+				<unzip src="${cibase}/jobs/Freeze-${freezeproject}/workspace/${project}-${artifact.id}.zip" dest="${cibase}/workspace/${freezeproject}"/>
+				<echo message="freeze=${freeze}" file="${cibase}/workspace/${freezeproject}/freeze.cfg" force="true" />
+				<echo message="basefreeze=${freeze}" file="C:/scm/gopatch/patch.cfg.${freeze}" force="true" />
+			</else>
+		</if>
+	</target>
+
+	<target name="CopyPatchFiles">
+		<copy todir="${cibase}/workspace/${freezeproject}" verbose="true" overwrite="true">
+			<fileset dir="C:/scm/gopatch/${basefreeze}-${project}" />
+		</copy>
+	</target>
+
+</project>

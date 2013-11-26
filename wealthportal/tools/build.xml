@@ -1,0 +1,160 @@
+<!-- Modification History -->
+
+<!-- Dharmendra Kumar	09/28/2013	Initial coding to deploy package in IIS -->
+<!-- version 2013.0.1 -->
+<project name="DeployOnIIS" basedir=".." default="MachineInfo">
+<taskdef resource="net/sf/antcontrib/antcontrib.properties"/>
+	<tstamp>
+		<format property="timestamp" pattern="yyyyMMdd"/>
+		<format property="timestamp-HHmm" pattern="yyyyMMdd-HHmm"/>
+	</tstamp>
+	
+	<property name="patchdir" value="D:/wealthportal" />
+	<mkdir dir="${patchdir}/${timestamp}/log" />
+	<record name="${patchdir}/${timestamp}/log/install-${timestamp-HHmm}.log" />
+	<record name="${patchdir}/${timestamp}/log/install.debug-${timestamp-HHmm}.log" loglevel="verbose" />
+	
+	<property environment="env" />
+	<property file="cfg/deploy.cfg"/>
+	<property name="app" value="${virtualdir}" />
+	<property name="iishome" value="C:/inetpub/wwwroot" />
+	<property name="emailuser" value="${env.USERNAME}@sungard.com" />
+	<property name="defaultemailto" value="codemovegrp1@sungard.com" />
+	<mkdir dir="${patchdir}/${timestamp}/new" />
+	
+	<target name="MachineInfo">
+		<echo message="TIMESTAMP : ${timestamp-HHmm}"/>
+		<echo message="SERVER    : ${env.COMPUTERNAME}" />
+		<echo message="DOMAIN    : ${env.USERDOMAIN}" />
+		<echo message="USER      : ${env.USERNAME}" />		
+	</target>
+	
+	<target name="StopIIS">
+		<exec executable="cmd" failonerror="true">
+			<arg value="/c" />
+			<arg value="iisreset /stop" />
+		</exec>
+	</target>
+	
+	<target name="StartIIS">
+		<exec executable="cmd" failonerror="true">
+			<arg value="/c" />
+			<arg value="iisreset /start" />
+		</exec>
+	</target>
+	
+	<target name="StopWebIIS" if="webserver">
+		<exec executable="cmd" >
+			<arg value="/c" />
+			<arg value="sc \\${webserver} stop iisadmin" />
+		</exec>
+	</target>
+	
+	<target name="StartWebIIS" if="webserver">
+		<exec executable="cmd" >
+			<arg value="/c" />
+			<arg value="sc \\${webserver} start iisadmin" />
+		</exec>
+	</target>
+	
+	<target name="RestartIIS">
+		<exec executable="cmd" failonerror="true">
+			<arg value="/c" />
+			<arg value="iisreset /restart" />
+		</exec>
+	</target>
+	
+	<target name="BackupCurrInstall" depends="StopWebIIS, StopIIS">
+		<if>
+		<available file="${patchdir}/${timestamp}/backup/${app}" type="dir" />
+		<then>
+			<move file="${patchdir}/${timestamp}/backup/${app}" tofile="${patchdir}/${timestamp}/backup/${app}-${timestamp-HHmm}" preservelastmodified="true" />
+		</then>
+		</if>
+		
+		<echo message="Backing up the current installation.." />
+		<mkdir dir="${iishome}/${app}" />
+		<copy todir="${patchdir}/${timestamp}/backup/${app}" preservelastmodified="true">
+			<fileset dir="${iishome}/${app}" />
+		</copy>
+		<delete dir="${iishome}/${app}" />
+	</target>
+
+	<target name="CopyPackage" if="packagesource">
+		<copy todir="${patchdir}/${timestamp}/new" >
+			<fileset dir="${packagesource}" >
+				<include name="*.zip" />
+			</fileset>
+		</copy>
+	</target>
+	
+	<target name="InstallNewPackage" depends="BackupCurrInstall" >
+		<unzip src="${patchdir}/${timestamp}/new/${package}.zip" dest="${patchdir}/${timestamp}/new" />
+		<move todir="${iishome}/${app}" preservelastmodified="true" >
+			<fileset dir="${patchdir}/${timestamp}/new/${package}" />
+		</move>
+	</target>
+	
+	<target name="SetupConfigFiles">
+		<for list="${configtosetup}" delimiter=";" param = "cfgfilewpath">
+		<sequential>
+		<var name="cfgfile" unset="true"/>
+		<var name="cfgdir" unset="true"/>
+		<var name="cfgfilewoext" unset="true"/>
+		
+		<basename file="${iishome}/${app}/@{cfgfilewpath}" property="cfgfile" />
+		<dirname file="${iishome}/${app}/@{cfgfilewpath}" property="cfgdir" />
+			<for list="${cfgfile}" delimiter="." param = "ext">
+				<sequential>
+					<var name="ext" unset="true"/>
+					<property name="ext" value="@{ext}" />
+					<property name="cfgfilewoext" value="@{ext}" />
+				</sequential>
+			</for>
+			<move file="${cfgdir}/${cfgfilewoext}.${envprofile}.${ext}" tofile="${cfgdir}/${cfgfilewoext}.${ext}" preservelastmodified="true" force="true" />
+			<echo message="Configuring ${cfgdir}/${cfgfile} completed." />
+		</sequential>
+		</for>
+	</target>
+	
+	<target name="ApplyCustomTheme" if="themepackage">
+		<unzip src="${patchdir}/${timestamp}/new/${themepackage}.zip" dest="${patchdir}/${timestamp}/new" />
+		<delete dir="${iishome}/${app}/App_Themes/Default" />
+		<move todir="${iishome}/${app}/App_Themes" preservelastmodified="true" >
+			<fileset dir="${patchdir}/${timestamp}/new/${themepackage}/MyThemes" />
+		</move>
+		<delete dir="${patchdir}/${timestamp}/new/${themepackage}" />
+	</target>
+	
+	<target name="Install" depends="MachineInfo, StopWebIIS, StopIIS, BackupCurrInstall, CopyPackage, InstallNewPackage, ApplyCustomTheme, SetupConfigFiles, StartIIS, StartWebIIS">
+		<echo message="Installation Completed for ${package}." />
+		<antcall target="EmailNotification" />
+	</target>
+	
+	<target name="EmailNotification" if="emailsmtpserver">
+		<mail mailhost="${emailsmtpserver}" subject="Installation Completed for ${package} on ${env.COMPUTERNAME}" from="${emailuser}" tolist="${emailtolist},${defaultemailto}" >
+			<message>Installation log attached.</message>
+			<attachments>
+				<fileset dir="${patchdir}/${timestamp}/log">
+					<include name="install-${timestamp-HHmm}.log"/>
+				</fileset>
+			</attachments>
+		</mail>
+	</target>
+	
+	<target name="Download">
+		<echo message="Connecting to ftp server ${ftphost} :" />
+		<input message="Enter ftp userid [Ex. codemove]?" addproperty="ftpuser" />
+		<input message="Enter password for ${ftpuser}?" addproperty="ftppassword" />
+		<input message="Enter ftp path for package [ relative to ${ftpuser} home directory ]?" addproperty="ftppath" />
+		<ftp action="get" verbose="yes"
+			server="${ftphost}"
+			userid="${ftpuser}"
+			password="${ftppassword}"
+			remotedir="${ftppath}">
+			<fileset dir="${patchdir}/${timestamp}/new">
+				<include name="*" />
+			</fileset>
+		</ftp>
+	</target>
+</project>

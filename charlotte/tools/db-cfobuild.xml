@@ -1,0 +1,183 @@
+<!-- Change History-->
+
+<!-- 08/01/2013     Dharmendra Kumar        Added testpatch target to run daily test builds-->
+<!-- 07/12/2013     Dharmendra Kumar        Added comment to the target vsscheckin         -->
+<!-- 06/27/2013     Dharmendra Kumar        Added target show-updated-sql to show the list -->
+<!-- 06/07/2013     Dharmendra Kumar        Initial Coding to Automate Charllote DB build  -->
+<!-- rev=2013.1.3-->
+
+<project name="cltdbbuild" default="vsshistory" basedir="..">
+<taskdef resource="net/sf/antcontrib/antcontrib.properties"/>
+<taskdef name="stringutil" classname="ise.antelope.tasks.StringUtilTask"/>
+
+<property file="cfg/db-clt-${rel}.cfg"/>
+<property file="cfg/db-lastpackage-${rel}.cfg"/>
+<property name="lastpackagetime" value="01/01/2000 01:01 AM" />
+
+	<property name="timenow" value="${lastpackagetime}" />
+	<tstamp> <format property="timestampHHmm" pattern="yyMMddHHmm" /> </tstamp>
+	<tstamp> <format property="timestamp" pattern="yyMMdd" /> </tstamp>
+	<tstamp> <format property="yearstamp" pattern="yyyy" /> </tstamp>
+	<tstamp> <format property="monthstamp" pattern="MM" /> </tstamp>
+	<tstamp> <format property="daystamp" pattern="dd" /> </tstamp>
+	<tstamp> <format property="timenow" pattern="MM/dd/yyyy hh:mm aa"/> </tstamp>
+	<tstamp> <format property="buildtime" pattern="MM/dd/yyyy hh:mm aa"/> </tstamp>
+	
+	<target name="vsshistory">
+		<vsshistory vsspath="${vssupgradedir}" 
+    		serverPath="${ssupgradedir}"
+    		recursive="true"
+		/>
+	</target>
+
+	<target name="prebuild">
+		<property name="targetdir" value="${workdir}/Releases/clt${timestamp}" />
+		<if>
+			<available file="${targetdir}/SQL" type="dir"/>
+			<then>
+				<!--fail message="Target Directory ${targetdir}/SQL Exists, Please delete the directory and try again..!"/-->
+				<move file="${targetdir}/SQL" tofile="${targetdir}/SQL-${timestampHHmm}" />
+				<mkdir dir="${targetdir}/SQL"/>
+			</then>
+			<else>
+				<mkdir dir="${targetdir}/Scripts"/>
+				<mkdir dir="${targetdir}/SQL"/>
+			</else>
+		</if>
+	</target>
+	
+	<target name="vsscheckout-scripts">
+		<for list="${scrtypetocompile}" delimiter=";" param="fileregex">
+			<sequential>
+				<vsscheckout	vsspath="${vssscriptdir}/@{fileregex}*"
+								serverPath="${ssupgradedir}"
+								localpath="${targetdir}/Scripts"
+				/>
+			</sequential>
+		</for>
+		<delete>
+			<fileset dir="${targetdir}/Scripts" defaultexcludes="no" includes="**/*.sql,**/*.scc,**/*.SQL,**/*.Sql" />
+		</delete>
+	</target>
+	
+	<target name="vssget-scripts">
+		<for list="${scrtypetocompile}" delimiter=";" param="fileregex">
+			<sequential>
+				<vssget		vsspath="${vssscriptdir}/@{fileregex}*"
+							serverPath="${ssupgradedir}"
+							localpath="${targetdir}/Scripts"
+							filetimestamp="modified"
+				/>
+			</sequential>
+		</for>
+		<delete>
+			<fileset dir="${targetdir}/Scripts" defaultexcludes="no" includes="**/*.sql,**/*.scc,**/*.SQL,**/*.Sql" />
+		</delete>
+	</target>
+	
+	<target name="vssget-scripts-compile">
+		<delete dir="${srcsafeworkdir}/SrcSafe" />
+		<vssget	vsspath="${vssscriptcompiledir}"
+				serverPath="${ssupgradedir}"
+				localpath="${srcsafeworkdir}/SrcSafe"
+				filetimestamp="modified"
+				recursive="true"
+		/>
+	</target>
+	
+	<target name="vssget-stp">
+		<vssget	vsspath="${vssstpdir}"
+				serverPath="${ssstpdir}"
+				localpath="${srcsafeworkdir}/SrcSafe/STP"
+				recursive="true"
+				filetimestamp="modified"
+				writable="true"
+		/>
+		<delete>
+			<fileset dir="${srcsafeworkdir}/SrcSafe" defaultexcludes="no" includes="**/*.scc" />
+		</delete>
+	</target>
+	
+	<target name="dbbuild">
+		<exec executable="cmd" failonerror="true" >
+			<arg value="/c"/>
+			<arg value="${srcsafeworkdir}\DoIt${yearstamp}-auto.bat"/>
+			<arg value="${timestamp}"/>
+		</exec>
+	</target>
+	
+	<target name="vsscheckin-scripts">
+		<for list="${scrtypetocompile}" delimiter=";" param="fileregex">
+			<sequential>
+				<vsscheckin	vsspath="${vssscriptdir}/@{fileregex}*"
+								serverPath="${ssupgradedir}"
+								localpath="${targetdir}/Scripts"
+								comment="checkin by automated build at ${buildtime}"
+				/>
+			</sequential>
+		</for>
+	</target>
+	
+	<target name="get-updated-sql">
+		<for list="${scrtypetocompile}" delimiter=";" param="fileregex">
+			<sequential>
+				<vssget	vsspath="${vssscriptdir}/@{fileregex}*"
+						serverPath="${ssupgradedir}"
+						localpath="${targetdir}/SQL"
+						filetimestamp="modified"
+				/>
+			</sequential>
+		</for>
+	
+		<delete>
+			<fileset id="file.list" dir="${targetdir}/SQL" includes="**/*">
+				<date datetime="${timenow}" when="before"/>
+			</fileset>
+		</delete>
+		<delete>
+			<fileset dir="${targetdir}/SQL" defaultexcludes="no" includes="**/*.scc" />
+		</delete>
+	</target>
+	
+	<target name="copy-updated-sql">
+		<copy todir="${targetdir}/SQL" preservelastmodified="true">
+			<fileset dir="${targetdir}/Scripts" />
+		</copy>
+	
+		<delete>
+			<fileset id="file.list" dir="${targetdir}/SQL" includes="**/*">
+				<date datetime="${timenow}" when="before"/>
+			</fileset>
+		</delete>
+		<delete>
+			<fileset dir="${targetdir}/SQL" defaultexcludes="no" includes="**/*.scc" />
+		</delete>
+	</target>
+	
+	<target name="show-updated-sql">
+		<fileset id="file.list.new" dir="${targetdir}/SQL" includes="**/*">
+			<date datetime="${timenow}" when="after"/>
+		</fileset>
+		<property name="list.files.new" refid="file.list.new"/>
+		
+		<echo message="List of changed files since ${timenow} are as follows .." />
+		<echo message="" />
+		<for list="${list.files.new}" delimiter=";" param = "filewithpath">
+			<sequential>
+				<echo message="@{filewithpath}" />
+			</sequential>
+		</for>
+	</target>
+	
+	<target name="wrapuppatch" depends="prebuild, vsscheckout-scripts, vssget-scripts-compile, vssget-stp, dbbuild, vsscheckin-scripts, get-updated-sql, show-updated-sql">
+		<delete file="${archievedir}/${rel}/db-clt.zip" />
+		<zip destfile="${archievedir}/${rel}/db-clt.zip" basedir="${targetdir}/SQL" />
+		<echo message="lastpackagetime=${buildtime}" file="cfg/db-lastpackage-${rel}.cfg" force="true" />
+	</target>
+	
+	<target name="testpatch" depends="prebuild, vssget-scripts, vssget-scripts-compile, vssget-stp, dbbuild, copy-updated-sql, show-updated-sql">
+		<delete file="${archievedir}/${rel}/db-clt.zip" />
+		<zip destfile="${archievedir}/${rel}/db-clt.zip" basedir="${targetdir}/SQL" />
+		<echo message="lastpackagetime=${buildtime}" file="cfg/db-lastpackage-${rel}.cfg" force="true" />
+	</target>
+</project>
