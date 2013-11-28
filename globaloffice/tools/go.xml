@@ -1,5 +1,6 @@
 <!-- Change History-->
 
+<!-- 11/28/2013     Dharmendra Kumar  Added removecfg in the zippatch target						  -->
 <!-- 10/09/2013     Dharmendra Kumar  Making telerik dll overwrite conditional.                       -->
 <!-- 09/30/2013     Dharmendra Kumar  Accomodated packaging of projects in svn and added comments.    -->
 <!-- 07/17/2013     Dharmendra Kumar  Removed UpdateAddvThemes from AMIPAtch creation as of 13A.      -->
@@ -18,7 +19,7 @@
 <!-- 02/26/2013     Dharmendra Kumar  Added publisheddir variable to handle the case where it's value -->
 <!--								  is different than project name								  -->
 <!-- 02/15/2013		Dharmendra Kumar  Initial Coding to Support Packaging of GlobalOffice Products    -->
-<!-- rev=2013.0.16-->
+<!-- rev=2013.0.17-->
 
 <project name="CreatePatch" default="WrapupPatch" basedir="..">
 	<property environment="env" />
@@ -199,6 +200,7 @@
 		<copy todir="${baseoutdir}/${rel}/patch/${project}/${copytodir}" preservelastmodified="true">
 			<fileset dir="${outputexedir}"/>
 		</copy>
+		<antcall target="RemoveCfg" />
 		<zip destfile="${baseoutdir}/${rel}/${project}.zip" basedir="${baseoutdir}/${rel}/patch" />
 	</target>
 
