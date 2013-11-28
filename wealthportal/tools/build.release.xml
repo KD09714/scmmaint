@@ -1,6 +1,6 @@
 <!-- Modification History -->
 
-<!-- Dharmendra Kumar	11/25/2013	Initial coding to deploy package for UMB custody -->
+<!-- Dharmendra Kumar	11/25/2013	Initial coding to deploy wealthportal package on UAT/PROD -->
 <!-- version 2013.0.1 -->
 <project name="DeployOnIIS" basedir=".." default="MachineInfo">
 <taskdef resource="net/sf/antcontrib/antcontrib.properties"/>
@@ -15,22 +15,13 @@
 	<record name="${patchdir}/${timestamp}/log/install.debug-${timestamp-HHmm}.log" loglevel="verbose" />
 	
 	<property environment="env" />
-	<property name="package" value="" />
+	<property file="cfg/deploy.cfg"/>
 	<property name="app" value="${virtualdir}" />
-	<property name="app" value="${installdir}" />
+	<property name="iishome" value="C:/inetpub/wwwroot" />
 	<property name="emailuser" value="${env.USERNAME}@sungard.com" />
 	<property name="defaultemailto" value="codemovegrp1@sungard.com" />
 	<mkdir dir="${patchdir}/${timestamp}/new" />
-	<property file="cfg/${package}-deploy.cfg"/>
 	
-	<target name="ValidateCfgFile">
-		<if>
-		<equals arg1="${package}" arg2="" />
-		<then>
-			<fail message="package property not set, please use -Dpackage=packagename option while calling ant" />
-		</then>
-		</if>
-	</target>
 	
 	<target name="MachineInfo">
 		<echo message="TIMESTAMP : ${timestamp-HHmm}"/>
@@ -39,40 +30,22 @@
 		<echo message="USER      : ${env.USERNAME}" />		
 	</target>
 	
-	<target name="StopAppPool" if="applicationpool" >
+	<target name="StopAppPool">
 		<exec executable="cmd" failonerror="true">
 			<arg value="/c" />
 			<arg value="appcmd stop apppool /apppool.name:${applicationpool}" />
 		</exec>
 	</target>
 	
-	<target name="StartAppPool" if="applicationpool" >
+	<target name="StartAppPool">
 		<exec executable="cmd" failonerror="true">
 			<arg value="/c" />
-			<arg value="appcmd stop apppool /apppool.name:${applicationpool}" />
+			<arg value="appcmd start apppool /apppool.name:${applicationpool}" />
 		</exec>
 	</target>
 	
-	<target name="RestartAppPool" depends="StopAppPool, StartAppPool" if="applicationpool" >
-		<echo message="Restart Completed..!" />
-	</target>
-	
-	<target name="StopService" if="servicename">
-		<exec executable="cmd" failonerror="true" >
-			<arg value="/c" />
-			<arg value="sc stop ${servicename}" />
-		</exec>
-	</target>
-	
-	<target name="StartService" if="servicename">
-		<exec executable="cmd" failonerror="true" >
-			<arg value="/c" />
-			<arg value="sc start ${servicename}" />
-		</exec>
-	</target>
-	
-	<target name="RestartService" depends="StopService, StartService" if="servicename">
-		<echo message="Restart Completed ..!" />
+	<target name="RestartAppPool" depends="StopAppPool, StartAppPool">
+		<echo message="Restart completed." />
 	</target>
 	
 	<target name="BackupCurrInstall" depends="StopAppPool">
@@ -84,11 +57,11 @@
 		</if>
 		
 		<echo message="Backing up the current installation.." />
-		<mkdir dir="${installroot}/${app}" />
+		<mkdir dir="${iishome}/${app}" />
 		<copy todir="${patchdir}/${timestamp}/backup/${app}" preservelastmodified="true" overwrite="true" force="true">
-			<fileset dir="${installroot}/${app}" />
+			<fileset dir="${iishome}/${app}" />
 		</copy>
-		<delete dir="${installroot}/${app}" />
+		<delete dir="${iishome}/${app}" />
 	</target>
 
 	<target name="CopyPackage" if="packagesource">
@@ -101,7 +74,7 @@
 	
 	<target name="InstallNewPackage" depends="BackupCurrInstall" >
 		<unzip src="${patchdir}/${timestamp}/new/${package}.zip" dest="${patchdir}/${timestamp}/new" />
-		<move todir="${installroot}/${installdir}" preservelastmodified="true" >
+		<move todir="${iishome}/${app}" preservelastmodified="true" >
 			<fileset dir="${patchdir}/${timestamp}/new/${package}" />
 		</move>
 	</target>
@@ -113,8 +86,8 @@
 		<var name="cfgdir" unset="true"/>
 		<var name="cfgfilewoext" unset="true"/>
 		
-		<basename file="${installroot}/${app}/@{cfgfilewpath}" property="cfgfile" />
-		<dirname file="${installroot}/${app}/@{cfgfilewpath}" property="cfgdir" />
+		<basename file="${iishome}/${app}/@{cfgfilewpath}" property="cfgfile" />
+		<dirname file="${iishome}/${app}/@{cfgfilewpath}" property="cfgdir" />
 			<for list="${cfgfile}" delimiter="." param = "ext">
 				<sequential>
 					<var name="ext" unset="true"/>
@@ -127,8 +100,17 @@
 		</sequential>
 		</for>
 	</target>
-		
-	<target name="Install" depends="MachineInfo, ValidateCfgFile, StopAppPool, StopService, BackupCurrInstall, CopyPackage, InstallNewPackage, SetupConfigFiles, StartAppPool, StartService">
+	
+	<target name="ApplyCustomTheme" if="themepackage">
+		<unzip src="${patchdir}/${timestamp}/new/${themepackage}.zip" dest="${patchdir}/${timestamp}/new" />
+		<delete dir="${iishome}/${app}/App_Themes/Default" />
+		<move todir="${iishome}/${app}/App_Themes" preservelastmodified="true" >
+			<fileset dir="${patchdir}/${timestamp}/new/${themepackage}/MyThemes" />
+		</move>
+		<delete dir="${patchdir}/${timestamp}/new/${themepackage}" />
+	</target>
+	
+	<target name="Install" depends="MachineInfo, StopAppPool, BackupCurrInstall, CopyPackage, InstallNewPackage, ApplyCustomTheme, SetupConfigFiles, StartAppPool">
 		<echo message="Installation Completed for ${package}." />
 		<antcall target="EmailNotification" />
 	</target>
