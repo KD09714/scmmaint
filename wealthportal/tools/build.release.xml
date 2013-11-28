@@ -1,7 +1,8 @@
 <!-- Modification History -->
 
+<!-- Dharmendra Kumar   11/28/2013  Added functionality to replace token with password        -->
 <!-- Dharmendra Kumar	11/25/2013	Initial coding to deploy wealthportal package on UAT/PROD -->
-<!-- version 2013.0.1 -->
+<!-- version 2013.0.2 -->
 <project name="DeployOnIIS" basedir=".." default="MachineInfo">
 <taskdef resource="net/sf/antcontrib/antcontrib.properties"/>
 	<tstamp>
@@ -110,9 +111,15 @@
 		<delete dir="${patchdir}/${timestamp}/new/${themepackage}" />
 	</target>
 	
-	<target name="Install" depends="MachineInfo, StopAppPool, BackupCurrInstall, CopyPackage, InstallNewPackage, ApplyCustomTheme, SetupConfigFiles, StartAppPool">
+	<target name="Install" depends="MachineInfo, StopAppPool, BackupCurrInstall, CopyPackage, InstallNewPackage, ApplyCustomTheme, SetupConfigFiles, StartAppPool" >
 		<echo message="Installation Completed for ${package}." />
 		<antcall target="EmailNotification" />
+		<record name="${patchdir}/${timestamp}/log/install.debug-${timestamp-HHmm}.log" loglevel="verbose" action="stop" />
+	<!-- Post Installation Steps -->
+		<input message="Please Enter Database password (App Server) Or Infinity password (Web Server) :" addproperty="SunGard" />
+		<replace file="${iishome}/${app}/Web.config">
+			<replacefilter token="@SunGard@" value="${SunGard}" />
+		</replace>
 	</target>
 	
 	<target name="EmailNotification" if="emailsmtpserver">
