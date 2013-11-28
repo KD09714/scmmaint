@@ -2,28 +2,26 @@
 
 <!-- Dharmendra Kumar	11/25/2013	Initial coding to deploy package for UMB custody -->
 <!-- version 2013.0.1 -->
-<project name="DeployOnIIS" basedir=".." default="ValidateCfgFile">
+<project name="DeployOnIIS" basedir=".." default="MachineInfo">
 <taskdef resource="net/sf/antcontrib/antcontrib.properties"/>
 	<tstamp>
 		<format property="timestamp" pattern="yyyyMMdd"/>
 		<format property="timestamp-HHmm" pattern="yyyyMMdd-HHmm"/>
 	</tstamp>
 	
-	<property name="patchdir" value="C:/PatchHolding" />
+	<property file="cfg/${package}-deploy.cfg"/>
+	<property name="patchdir" value="D:/PatchHolding" />
 	<mkdir dir="${patchdir}/${timestamp}/log" />
 	<record name="${patchdir}/${timestamp}/log/install-${timestamp-HHmm}.log" />
 	<record name="${patchdir}/${timestamp}/log/install.debug-${timestamp-HHmm}.log" loglevel="verbose" />
 	
 	<property environment="env" />
 	<property name="package" value="" />
-	<property name="app" value="${virtualdir}" />
 	<property name="app" value="${installdir}" />
-	<property name="installroot" value="${iishome}" />
 	<property name="emailuser" value="${env.USERNAME}@sungard.com" />
 	<property name="defaultemailto" value="codemovegrp1@sungard.com" />
 	<mkdir dir="${patchdir}/${timestamp}/new" />
-	
-	<property file="cfg/${package}-deploy.cfg"/>
+
 	
 	<target name="ValidateCfgFile">
 		<if>
@@ -41,28 +39,43 @@
 		<echo message="USER      : ${env.USERNAME}" />		
 	</target>
 	
-	<target name="StopIIS">
+	<target name="StopAppPool" if="applicationpool" >
 		<exec executable="cmd" failonerror="true">
 			<arg value="/c" />
-			<arg value="iisreset /stop" />
+			<arg value="appcmd stop apppool /apppool.name:${applicationpool}" />
 		</exec>
 	</target>
 	
-	<target name="StartIIS">
+	<target name="StartAppPool" if="applicationpool" >
 		<exec executable="cmd" failonerror="true">
 			<arg value="/c" />
-			<arg value="iisreset /start" />
+			<arg value="appcmd start apppool /apppool.name:${applicationpool}" />
 		</exec>
 	</target>
 	
-	<target name="RestartIIS">
-		<exec executable="cmd" failonerror="true">
+	<target name="RestartAppPool" depends="StopAppPool, StartAppPool" if="applicationpool" >
+		<echo message="Restart Completed..!" />
+	</target>
+	
+	<target name="StopService" if="servicename">
+		<exec executable="cmd" failonerror="true" >
 			<arg value="/c" />
-			<arg value="iisreset /restart" />
+			<arg value="sc stop ${servicename}" />
 		</exec>
 	</target>
 	
-	<target name="BackupCurrInstall" depends="StopIIS">
+	<target name="StartService" if="servicename">
+		<exec executable="cmd" failonerror="true" >
+			<arg value="/c" />
+			<arg value="sc start ${servicename}" />
+		</exec>
+	</target>
+	
+	<target name="RestartService" depends="StopService, StartService" if="servicename">
+		<echo message="Restart Completed ..!" />
+	</target>
+	
+	<target name="BackupCurrInstall" depends="StopAppPool">
 		<if>
 		<available file="${patchdir}/${timestamp}/backup/${app}" type="dir" />
 		<then>
@@ -71,7 +84,7 @@
 		</if>
 		
 		<echo message="Backing up the current installation.." />
-		<mkdir dir="${iishome}/${app}" />
+		<mkdir dir="${installroot}/${app}" />
 		<copy todir="${patchdir}/${timestamp}/backup/${app}" preservelastmodified="true" overwrite="true" force="true">
 			<fileset dir="${installroot}/${app}" />
 		</copy>
@@ -100,8 +113,8 @@
 		<var name="cfgdir" unset="true"/>
 		<var name="cfgfilewoext" unset="true"/>
 		
-		<basename file="${iishome}/${app}/@{cfgfilewpath}" property="cfgfile" />
-		<dirname file="${iishome}/${app}/@{cfgfilewpath}" property="cfgdir" />
+		<basename file="${installroot}/${app}/@{cfgfilewpath}" property="cfgfile" />
+		<dirname file="${installroot}/${app}/@{cfgfilewpath}" property="cfgdir" />
 			<for list="${cfgfile}" delimiter="." param = "ext">
 				<sequential>
 					<var name="ext" unset="true"/>
@@ -115,7 +128,7 @@
 		</for>
 	</target>
 		
-	<target name="Install" depends="MachineInfo, ValidateCfgFile, StopIIS, BackupCurrInstall, CopyPackage, InstallNewPackage, SetupConfigFiles, StartIIS, StartWebIIS">
+	<target name="Install" depends="MachineInfo, ValidateCfgFile, StopAppPool, StopService, BackupCurrInstall, CopyPackage, InstallNewPackage, SetupConfigFiles, StartAppPool, StartService">
 		<echo message="Installation Completed for ${package}." />
 		<antcall target="EmailNotification" />
 	</target>
