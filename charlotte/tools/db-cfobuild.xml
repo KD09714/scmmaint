@@ -1,10 +1,11 @@
 <!-- Change History-->
 
+<!-- 12/03/2013     Dharmendra Kumar        Renaming Scripts directory during rebuild      -->
 <!-- 08/01/2013     Dharmendra Kumar        Added testpatch target to run daily test builds-->
 <!-- 07/12/2013     Dharmendra Kumar        Added comment to the target vsscheckin         -->
 <!-- 06/27/2013     Dharmendra Kumar        Added target show-updated-sql to show the list -->
 <!-- 06/07/2013     Dharmendra Kumar        Initial Coding to Automate Charllote DB build  -->
-<!-- rev=2013.1.3-->
+<!-- rev=2013.1.4-->
 
 <project name="cltdbbuild" default="vsshistory" basedir="..">
 <taskdef resource="net/sf/antcontrib/antcontrib.properties"/>
@@ -38,6 +39,8 @@
 				<!--fail message="Target Directory ${targetdir}/SQL Exists, Please delete the directory and try again..!"/-->
 				<move file="${targetdir}/SQL" tofile="${targetdir}/SQL-${timestampHHmm}" />
 				<mkdir dir="${targetdir}/SQL"/>
+				<move file="${targetdir}/Scripts" tofile="${targetdir}/Scripts-${timestampHHmm}" />
+				<mkdir dir="${targetdir}/Scripts"/>
 			</then>
 			<else>
 				<mkdir dir="${targetdir}/Scripts"/>
