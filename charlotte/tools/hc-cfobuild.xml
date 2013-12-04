@@ -1,10 +1,11 @@
 <!-- Change History-->
 
+<!-- 12/04/2013   Dharmendra Kumar     Rename HardCode.zip to append release in name.      -->
 <!-- 08/01/2013   Dharmendra Kumar     Added testpatch target to run daily test builds.    -->
 <!-- 07/24/2013   Dharmendra Kumar     Added support to zip the hardcode.                  -->
 <!-- 06/27/2013   Dharmendra Kumar     Added support to hardcode build using bat file      -->
 <!-- 06/12/2012   Dharmendra Kumar     Initial Coding to Automate Charlotte Hardcode build -->
-<!-- rev=2013.1.3-->
+<!-- rev=2013.1.4-->
 
 <project name="clthcbuild" default="vsshistory" basedir="..">
 <taskdef resource="net/sf/antcontrib/antcontrib.properties"/>
@@ -84,6 +85,7 @@
 			<arg value="/c" />
 			<arg value="RunHC.bat ${hcservername},${hcdbname},${targetdir},01,${workdir}/HardCode" />
 		</exec>
+		<move file="${targetdir}/HardCode.zip" tofile="${targetdir}/HardCode${rel}.zip" />
 	</target>
 	
 	<target name="vsscheckin-upgrade">
