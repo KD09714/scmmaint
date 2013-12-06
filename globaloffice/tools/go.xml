@@ -1,6 +1,7 @@
 <!-- Change History-->
 
-<!-- 11/28/2013     Dharmendra Kumar  Added removecfg in the zippatch target						  -->
+<!-- 12/05/2013     Dharmendra Kumar  Added a new target archivedeliverable                           -->
+<!-- 11/28/2013     Dharmendra Kumar  Added removecfg in the zippatch target		              -->
 <!-- 10/09/2013     Dharmendra Kumar  Making telerik dll overwrite conditional.                       -->
 <!-- 09/30/2013     Dharmendra Kumar  Accomodated packaging of projects in svn and added comments.    -->
 <!-- 07/17/2013     Dharmendra Kumar  Removed UpdateAddvThemes from AMIPAtch creation as of 13A.      -->
@@ -19,7 +20,7 @@
 <!-- 02/26/2013     Dharmendra Kumar  Added publisheddir variable to handle the case where it's value -->
 <!--								  is different than project name								  -->
 <!-- 02/15/2013		Dharmendra Kumar  Initial Coding to Support Packaging of GlobalOffice Products    -->
-<!-- rev=2013.0.17-->
+<!-- rev=2013.0.18-->
 
 <project name="CreatePatch" default="WrapupPatch" basedir="..">
 	<property environment="env" />
@@ -305,6 +306,24 @@
 					</sequential>
 				</for>
 				<move file="${baseoutdir}/${rel}/patch/${project}/${precfg}" tofile="${baseoutdir}/${rel}/patch/${project}/${postcfg}" />
+			</sequential>
+		</for>
+	</target>
+	
+	<target name="archivedeliverable">
+		<echo message="${archivedir}" />
+			<for list="${filestocopy}" delimiter=";" param = "val">
+			<sequential>
+				<copy todir="${archivedir}" verbose="true" overwrite="true" file="@{val}" preservelastmodified="true" />
+			</sequential>
+		</for>
+		<for list="${copyall}" delimiter=";" param = "val">
+			<sequential>
+				<copy todir="${archivedir}" verbose="true" overwrite="true" preservelastmodified="true">
+					<fileset dir="@{val}" >
+						<include name= "*.zip" />
+					</fileset>
+				</copy>
 			</sequential>
 		</for>
 	</target>
