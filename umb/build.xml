@@ -1,7 +1,8 @@
 <!-- Modification History -->
 
+<!-- Dharmendra Kumar   12/11/2013      Add target to bounce trust & exent services      -->
 <!-- Dharmendra Kumar	11/25/2013	Initial coding to deploy package for UMB custody -->
-<!-- version 2013.0.1 -->
+<!-- version 2013.0.2 -->
 <project name="DeployOnIIS" basedir=".." default="MachineInfo">
 <taskdef resource="net/sf/antcontrib/antcontrib.properties"/>
 	<tstamp>
@@ -57,21 +58,39 @@
 		<echo message="Restart Completed..!" />
 	</target>
 	
-	<target name="StopService" if="servicename">
+	<target name="StopEventService" if="eventservicename">
 		<exec executable="cmd" failonerror="true" >
 			<arg value="/c" />
-			<arg value="sc stop ${servicename}" />
+			<arg value="sc stop ${eventservicename}" />
 		</exec>
 	</target>
 	
-	<target name="StartService" if="servicename">
+	<target name="StartEventService" if="eventservicename">
 		<exec executable="cmd" failonerror="true" >
 			<arg value="/c" />
-			<arg value="sc start ${servicename}" />
+			<arg value="sc start ${eventservicename}" />
 		</exec>
 	</target>
 	
-	<target name="RestartService" depends="StopService, StartService" if="servicename">
+	<target name="RestartEventService" depends="StopService, StartService" if="eventservicename">
+		<echo message="Restart Completed ..!" />
+	</target>
+	
+	<target name="StopTrustService" if="trustservicename">
+		<exec executable="cmd" failonerror="true" >
+			<arg value="/c" />
+			<arg value="sc stop ${trustservicename}" />
+		</exec>
+	</target>
+	
+	<target name="StartTrustService" if="trustservicename">
+		<exec executable="cmd" failonerror="true" >
+			<arg value="/c" />
+			<arg value="sc start ${trustservicename}" />
+		</exec>
+	</target>
+	
+	<target name="RestartTrustService" depends="StopService, StartService" if="trustservicename">
 		<echo message="Restart Completed ..!" />
 	</target>
 	
