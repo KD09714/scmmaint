@@ -1,9 +1,9 @@
 <!-- Modification History -->
-
+<!-- Dharmendra Kumar   12/11/2013      Changed the way it derive cfgfilewoext variable  -->
 <!-- Dharmendra Kumar   12/11/2013      Added target sequence.                           -->
 <!-- Dharmendra Kumar   12/11/2013      Add target to bounce trust & exent services      -->
 <!-- Dharmendra Kumar	11/25/2013	Initial coding to deploy package for UMB custody -->
-<!-- version 2013.0.3 -->
+<!-- version 2013.0.4 -->
 <project name="DeployOnIIS" basedir=".." default="MachineInfo">
 <taskdef resource="net/sf/antcontrib/antcontrib.properties"/>
 	<tstamp>
@@ -139,9 +139,9 @@
 				<sequential>
 					<var name="ext" unset="true"/>
 					<property name="ext" value="@{ext}" />
-					<property name="cfgfilewoext" value="@{ext}" />
 				</sequential>
 			</for>
+			<basename file="${installroot}/${app}/@{cfgfilewpath}" property="cfgfilewoext" suffix="${ext}" />
 			<move file="${cfgdir}/${cfgfilewoext}.${envprofile}.${ext}" tofile="${cfgdir}/${cfgfilewoext}.${ext}" preservelastmodified="true" force="true" />
 			<echo message="Configuring ${cfgdir}/${cfgfile} completed." />
 		</sequential>
