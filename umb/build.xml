@@ -1,8 +1,9 @@
 <!-- Modification History -->
 
+<!-- Dharmendra Kumar   12/11/2013      Added target sequence.                           -->
 <!-- Dharmendra Kumar   12/11/2013      Add target to bounce trust & exent services      -->
 <!-- Dharmendra Kumar	11/25/2013	Initial coding to deploy package for UMB custody -->
-<!-- version 2013.0.2 -->
+<!-- version 2013.0.3 -->
 <project name="DeployOnIIS" basedir=".." default="MachineInfo">
 <taskdef resource="net/sf/antcontrib/antcontrib.properties"/>
 	<tstamp>
@@ -147,7 +148,7 @@
 		</for>
 	</target>
 		
-	<target name="Install" depends="MachineInfo, ValidateCfgFile, StopAppPool, StopService, BackupCurrInstall, CopyPackage, InstallNewPackage, SetupConfigFiles, StartAppPool, StartService">
+	<target name="Install" depends="MachineInfo, ValidateCfgFile, StopAppPool, StopEventService, StopTrustService, BackupCurrInstall, CopyPackage, InstallNewPackage, SetupConfigFiles, StartAppPool, StartTrustService, StartEventService">
 		<echo message="Installation Completed for ${package}." />
 		<antcall target="EmailNotification" />
 	</target>
