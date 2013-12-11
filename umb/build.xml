@@ -73,7 +73,7 @@
 		</exec>
 	</target>
 	
-	<target name="RestartEventService" depends="StopService, StartService" if="eventservicename">
+	<target name="RestartEventService" depends="StopEventService, StartEventService" if="eventservicename">
 		<echo message="Restart Completed ..!" />
 	</target>
 	
@@ -91,7 +91,7 @@
 		</exec>
 	</target>
 	
-	<target name="RestartTrustService" depends="StopService, StartService" if="trustservicename">
+	<target name="RestartTrustService" depends="StopTrustService, StartTrustService" if="trustservicename">
 		<echo message="Restart Completed ..!" />
 	</target>
 	
@@ -142,7 +142,7 @@
 				</sequential>
 			</for>
 			<basename file="${installroot}/${app}/@{cfgfilewpath}" property="cfgfilewoext" suffix="${ext}" />
-			<move file="${cfgdir}/${cfgfilewoext}.${envprofile}.${ext}" tofile="${cfgdir}/${cfgfilewoext}.${ext}" preservelastmodified="true" force="true" />
+			<move file="${cfgdir}/${cfgfilewoext}.${envprofile}.${ext}" tofile="${cfgdir}/${cfgfilewoext}.${ext}" preservelastmodified="true" force="true" overwrite="true" />
 			<echo message="Configuring ${cfgdir}/${cfgfile} completed." />
 		</sequential>
 		</for>
