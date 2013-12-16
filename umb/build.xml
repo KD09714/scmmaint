@@ -1,9 +1,11 @@
 <!-- Modification History -->
+
+<!-- Dharmendra Kumar   12/16/2013      Do not delete/ recreate installation directory   -->
 <!-- Dharmendra Kumar   12/11/2013      Changed the way it derive cfgfilewoext variable  -->
 <!-- Dharmendra Kumar   12/11/2013      Added target sequence.                           -->
 <!-- Dharmendra Kumar   12/11/2013      Add target to bounce trust & exent services      -->
 <!-- Dharmendra Kumar	11/25/2013	Initial coding to deploy package for UMB custody -->
-<!-- version 2013.0.4 -->
+<!-- version 2013.0.5 -->
 <project name="DeployOnIIS" basedir=".." default="MachineInfo">
 <taskdef resource="net/sf/antcontrib/antcontrib.properties"/>
 	<tstamp>
@@ -108,7 +110,11 @@
 		<copy todir="${patchdir}/${timestamp}/backup/${app}" preservelastmodified="true" overwrite="true" force="true">
 			<fileset dir="${installroot}/${app}" />
 		</copy>
-		<delete dir="${installroot}/${app}" />
+		<delete>
+			<fileset dir="${installroot}/${app}" >
+				<include name="**/*" />
+			</fileset>
+		</delete>
 	</target>
 
 	<target name="CopyPackage" if="packagesource">
@@ -122,7 +128,9 @@
 	<target name="InstallNewPackage" depends="BackupCurrInstall" >
 		<unzip src="${patchdir}/${timestamp}/new/${package}.zip" dest="${patchdir}/${timestamp}/new" />
 		<move todir="${installroot}/${installdir}" preservelastmodified="true" >
-			<fileset dir="${patchdir}/${timestamp}/new/${package}" />
+			<fileset dir="${patchdir}/${timestamp}/new/${package}" >
+				<include name="**/*" />
+			</fileset>
 		</move>
 	</target>
 	
