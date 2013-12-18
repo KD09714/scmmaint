@@ -1,7 +1,8 @@
 <!-- Modification History -->
 
-<!-- Dharmendra Kumar	09/28/2013	Initial coding to deploy package in IIS -->
-<!-- version 2013.0.1 -->
+<!-- Dharmendra Kumar   11/28/2013  Added functionality to replace token with password        -->
+<!-- Dharmendra Kumar	11/25/2013	Initial coding to deploy wealthportal package on UAT/PROD -->
+<!-- version 2013.0.2 -->
 <project name="DeployOnIIS" basedir=".." default="MachineInfo">
 <taskdef resource="net/sf/antcontrib/antcontrib.properties"/>
 	<tstamp>
@@ -9,13 +10,13 @@
 		<format property="timestamp-HHmm" pattern="yyyyMMdd-HHmm"/>
 	</tstamp>
 	
-	<property name="patchdir" value="D:/wealthportal" />
 	<mkdir dir="${patchdir}/${timestamp}/log" />
 	<record name="${patchdir}/${timestamp}/log/install-${timestamp-HHmm}.log" />
 	<record name="${patchdir}/${timestamp}/log/install.debug-${timestamp-HHmm}.log" loglevel="verbose" />
 	
 	<property environment="env" />
 	<property file="cfg/deploy.cfg"/>
+    <property name="patchdir" value="D:/wealthportal" />
 	<property name="app" value="${virtualdir}" />
 	<property name="iishome" value="C:/inetpub/wwwroot" />
 	<property name="emailuser" value="${env.USERNAME}@sungard.com" />
@@ -29,14 +30,14 @@
 		<echo message="USER      : ${env.USERNAME}" />		
 	</target>
 	
-	<target name="StopIIS">
+	<target name="StopIIS" unless="applicationpool">
 		<exec executable="cmd" failonerror="true">
 			<arg value="/c" />
 			<arg value="iisreset /stop" />
 		</exec>
 	</target>
 	
-	<target name="StartIIS">
+	<target name="StartIIS" unless="applicationpool">
 		<exec executable="cmd" failonerror="true">
 			<arg value="/c" />
 			<arg value="iisreset /start" />
@@ -57,14 +58,31 @@
 		</exec>
 	</target>
 	
-	<target name="RestartIIS">
+	<target name="RestartIIS" unless="applicationpool">
 		<exec executable="cmd" failonerror="true">
 			<arg value="/c" />
 			<arg value="iisreset /restart" />
 		</exec>
 	</target>
 	
-	<target name="BackupCurrInstall" depends="StopWebIIS, StopIIS">
+	<target name="StopAppPool" if="applicationpool">
+		<exec executable="cmd" failonerror="true">
+			<arg value="/c" />
+			<arg value="appcmd stop apppool /apppool.name:${applicationpool}" />
+		</exec>
+	</target>
+	
+	<target name="StartAppPool" if="applicationpool">
+		<exec executable="cmd" failonerror="true">
+			<arg value="/c" />
+			<arg value="appcmd start apppool /apppool.name:${applicationpool}" />
+		</exec>
+	</target>
+	
+	<target name="RestartAppPool" depends="StopAppPool, StartAppPool">
+		<echo message="Restart completed." />
+
+	<target name="BackupCurrInstall" depends="StopWebIIS, StopIIS, StopAppPool">
 		<if>
 		<available file="${patchdir}/${timestamp}/backup/${app}" type="dir" />
 		<then>
@@ -74,7 +92,7 @@
 		
 		<echo message="Backing up the current installation.." />
 		<mkdir dir="${iishome}/${app}" />
-		<copy todir="${patchdir}/${timestamp}/backup/${app}" preservelastmodified="true">
+		<copy todir="${patchdir}/${timestamp}/backup/${app}" preservelastmodified="true" overwrite="true" force="true">
 			<fileset dir="${iishome}/${app}" />
 		</copy>
 		<delete dir="${iishome}/${app}" />
@@ -126,9 +144,15 @@
 		<delete dir="${patchdir}/${timestamp}/new/${themepackage}" />
 	</target>
 	
-	<target name="Install" depends="MachineInfo, StopWebIIS, StopIIS, BackupCurrInstall, CopyPackage, InstallNewPackage, ApplyCustomTheme, SetupConfigFiles, StartIIS, StartWebIIS">
+	<target name="Install" depends="MachineInfo, StopAppPool, StopWebIIS, StopIIS, BackupCurrInstall, CopyPackage, InstallNewPackage, ApplyCustomTheme, SetupConfigFiles, StartIIS, StartWebIIS, StartAppPool">
 		<echo message="Installation Completed for ${package}." />
 		<antcall target="EmailNotification" />
+		<record name="${patchdir}/${timestamp}/log/install.debug-${timestamp-HHmm}.log" loglevel="verbose" action="stop" />
+	<!-- Post Installation Steps -->
+		<input message="Please Enter Database password (App Server) Or Infinity password (Web Server) :" addproperty="SunGard" />
+		<replace file="${iishome}/${app}/Web.config">
+			<replacefilter token="@SunGard@" value="${SunGard}" />
+		</replace>
 	</target>
 	
 	<target name="EmailNotification" if="emailsmtpserver">
