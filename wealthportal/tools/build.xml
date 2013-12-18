@@ -10,13 +10,12 @@
 		<format property="timestamp-HHmm" pattern="yyyyMMdd-HHmm"/>
 	</tstamp>
 	
-	<mkdir dir="${patchdir}/${timestamp}/log" />
+	<property file="cfg/deploy.cfg"/>
+    <mkdir dir="${patchdir}/${timestamp}/log" />
 	<record name="${patchdir}/${timestamp}/log/install-${timestamp-HHmm}.log" />
 	<record name="${patchdir}/${timestamp}/log/install.debug-${timestamp-HHmm}.log" loglevel="verbose" />
 	
 	<property environment="env" />
-	<property file="cfg/deploy.cfg"/>
-    <property name="patchdir" value="D:/wealthportal" />
 	<property name="app" value="${virtualdir}" />
 	<property name="iishome" value="C:/inetpub/wwwroot" />
 	<property name="emailuser" value="${env.USERNAME}@sungard.com" />
@@ -81,6 +80,7 @@
 	
 	<target name="RestartAppPool" depends="StopAppPool, StartAppPool">
 		<echo message="Restart completed." />
+	</target>
 
 	<target name="BackupCurrInstall" depends="StopWebIIS, StopIIS, StopAppPool">
 		<if>
