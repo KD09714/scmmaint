@@ -1,8 +1,11 @@
 <!-- Modification History -->
 
+<!-- Dharmendra Kumar   12/20/2013  Added functionality to install CacheConsole.
+                                    Split Install and QCInstall target.
+									Add VerifyPackage target.								  -->
 <!-- Dharmendra Kumar   11/28/2013  Added functionality to replace token with password        -->
 <!-- Dharmendra Kumar	11/25/2013	Initial coding to deploy wealthportal package on UAT/PROD -->
-<!-- version 2013.0.2 -->
+<!-- version 2013.0.3 -->
 <project name="DeployOnIIS" basedir=".." default="MachineInfo">
 <taskdef resource="net/sf/antcontrib/antcontrib.properties"/>
 	<tstamp>
@@ -11,6 +14,7 @@
 	</tstamp>
 	
 	<property file="cfg/deploy.cfg"/>
+	<property name="patchdir" value="D:/wealthportal" />
     <mkdir dir="${patchdir}/${timestamp}/log" />
 	<record name="${patchdir}/${timestamp}/log/install-${timestamp-HHmm}.log" />
 	<record name="${patchdir}/${timestamp}/log/install.debug-${timestamp-HHmm}.log" loglevel="verbose" />
@@ -27,6 +31,29 @@
 		<echo message="SERVER    : ${env.COMPUTERNAME}" />
 		<echo message="DOMAIN    : ${env.USERDOMAIN}" />
 		<echo message="USER      : ${env.USERNAME}" />		
+	</target>
+	
+	<target name="VerifyPackage">
+		<if>
+		<available file="${patchdir}/${timestamp}/new/${package}.zip" />
+		<else>
+			<fail message="${patchdir}/${timestamp}/new/${package}.zip does not Exists..!!!" />
+		</else>
+		</if>
+		
+		<if>
+		<available file="${patchdir}/${timestamp}/new/${themepackage}.zip" />
+		<then>
+			<property name="themepackage.exists" value="true" />
+		</then>
+		</if>
+		
+		<if>
+		<available file="${patchdir}/${timestamp}/new/${consolepackage}.zip" />
+		<then>
+			<property name="consolepackage.exists" value="true" />
+		</then>
+		</if>
 	</target>
 	
 	<target name="StopIIS" unless="applicationpool">
@@ -113,6 +140,35 @@
 		</move>
 	</target>
 	
+	<target name="InstallCacheConsole" if="consolepackage" >
+		<if>
+		<equals arg1="${consolepackage.exists}" arg2="true" />
+			<then>
+			<if>
+			<available file="${patchdir}/${timestamp}/backup/${consolepackage}" type="dir" />
+			<then>
+				<move file="${patchdir}/${timestamp}/backup/${consolepackage}" tofile="${patchdir}/${timestamp}/backup/${consolepackage}-${timestamp-HHmm}" preservelastmodified="true" />
+			</then>
+			</if>
+		
+			<echo message="Backing up the Current Cache Console installation.." />
+			<mkdir dir="${consolehome}/${consolepackage}" />
+			<copy todir="${patchdir}/${timestamp}/backup/${consolepackage}" preservelastmodified="true" overwrite="true" force="true">
+				<fileset dir="${consolehome}/${consolepackage}" />
+			</copy>
+			<delete dir="${consolehome}/${consolepackage}" />
+	
+			<unzip src="${patchdir}/${timestamp}/new/${consolepackage}.zip" dest="${patchdir}/${timestamp}/new" />
+			<move todir="${consolehome}/${consolepackage}" preservelastmodified="true" >
+				<fileset dir="${patchdir}/${timestamp}/new/${consolepackage}" />
+			</move>
+			</then>
+			<else>
+				<echo message="${patchdir}/${timestamp}/new/${consolepackage}.zip does not exists, skipping installation..!!!">
+			</else>
+		</if>
+	</target>
+	
 	<target name="SetupConfigFiles">
 		<for list="${configtosetup}" delimiter=";" param = "cfgfilewpath">
 		<sequential>
@@ -136,15 +192,36 @@
 	</target>
 	
 	<target name="ApplyCustomTheme" if="themepackage">
-		<unzip src="${patchdir}/${timestamp}/new/${themepackage}.zip" dest="${patchdir}/${timestamp}/new" />
-		<delete dir="${iishome}/${app}/App_Themes/Default" />
-		<move todir="${iishome}/${app}/App_Themes" preservelastmodified="true" >
-			<fileset dir="${patchdir}/${timestamp}/new/${themepackage}/MyThemes" />
-		</move>
-		<delete dir="${patchdir}/${timestamp}/new/${themepackage}" />
+		<if>
+		<equals arg1="${themepackage.exists}" arg2="true" />
+		<then>
+			<unzip src="${patchdir}/${timestamp}/new/${themepackage}.zip" dest="${patchdir}/${timestamp}/new" />
+			<delete dir="${iishome}/${app}/App_Themes/Default" />
+			<move todir="${iishome}/${app}/App_Themes" preservelastmodified="true" >
+				<fileset dir="${patchdir}/${timestamp}/new/${themepackage}/MyThemes" />
+			</move>
+			<delete dir="${patchdir}/${timestamp}/new/${themepackage}" />
+		</then>
+		<else>
+			<echo message="Applying theme from the backup of last installation ..!!" />
+			<delete dir="${iishome}/${app}/App_Themes/Default" />
+			<copy file="${patchdir}/${timestamp}/backup/${app}/App_Themes/Default" todir="${iishome}/${app}/App_Themes" preservelastmodified="true" />
+		</else>
+		</if>
 	</target>
 	
-	<target name="Install" depends="MachineInfo, StopAppPool, StopWebIIS, StopIIS, BackupCurrInstall, CopyPackage, InstallNewPackage, ApplyCustomTheme, SetupConfigFiles, StartIIS, StartWebIIS, StartAppPool">
+	<target name="Install" depends="MachineInfo, StopAppPool, BackupCurrInstall, CopyPackage, InstallNewPackage, ApplyCustomTheme, SetupConfigFiles, StartAppPool">
+		<echo message="Installation Completed for ${package}." />
+		<antcall target="EmailNotification" />
+		<record name="${patchdir}/${timestamp}/log/install.debug-${timestamp-HHmm}.log" loglevel="verbose" action="stop" />
+	<!-- Post Installation Steps -->
+		<input message="Please Enter Database password (App Server) Or Infinity password (Web Server) :" addproperty="SunGard" />
+		<replace file="${iishome}/${app}/Web.config">
+			<replacefilter token="@SunGard@" value="${SunGard}" />
+		</replace>
+	</target>
+	
+	<target name="QCInstall" depends="MachineInfo, StopWebIIS, StopIIS, BackupCurrInstall, CopyPackage, InstallNewPackage, ApplyCustomTheme, SetupConfigFiles, StartIIS, StartWebIIS">
 		<echo message="Installation Completed for ${package}." />
 		<antcall target="EmailNotification" />
 		<record name="${patchdir}/${timestamp}/log/install.debug-${timestamp-HHmm}.log" loglevel="verbose" action="stop" />
