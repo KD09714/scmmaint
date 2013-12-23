@@ -115,7 +115,7 @@
 		<echo message="Restart completed." />
 	</target>
 
-	<target name="BackupCurrInstall" depends="StopWebIIS, StopIIS, StopAppPool">
+	<target name="BackupCurrInstall" >
 		<if>
 			<available file="${patchdir}/${timestamp}/backup/${app}" type="dir" />
 			<then>
@@ -169,10 +169,10 @@
 				<move todir="${consolehome}/${consoledir}" preservelastmodified="true" >
 					<fileset dir="${patchdir}/${timestamp}/new/${consolepackage}" />
 				</move>
-				<ancall target="SetupConfigFiles" />
+				<antcall target="SetupConfigFiles" />
 			</then>
 			<else>
-				<echo message="${patchdir}/${timestamp}/new/${consolepackage}.zip does not exists, skipping installation..!!!">
+				<echo message="${patchdir}/${timestamp}/new/${consolepackage}.zip does not exists, skipping installation..!!!" />
 			</else>
 		</if>
 	</target>
@@ -205,7 +205,7 @@
 		<if>
 			<equals arg1="${consolepackage.exists}" arg2="true" />
 			<then>
-				<move file="${cfgdir}/${cfgfilewoext}.${envprofile}.${ext}" tofile="${cfgdir}/${cfgfilewoext}.${ext}" preservelastmodified="true" force="true" />
+				<move file="${consolehome}/${consoledir}/Sungard.Trust.WealthPortal.ClearCacheConsole.exe.${envprofile}.config" tofile="${consolehome}/${consoledir}/Sungard.Trust.WealthPortal.ClearCacheConsole.exe.config" preservelastmodified="true" force="true" />
 			</then>
 		</if>
 	</target>
@@ -222,14 +222,24 @@
 				<delete dir="${patchdir}/${timestamp}/new/${themepackage}" />
 			</then>
 			<else>
-				<echo message="Applying theme from the backup of last installation ..!!" />
-				<delete dir="${iishome}/${app}/App_Themes/Default" />
-				<copy file="${patchdir}/${timestamp}/backup/${app}/App_Themes/Default" todir="${iishome}/${app}/App_Themes" preservelastmodified="true" />
+				<if>
+					<available file="${patchdir}/${timestamp}/backup/${app}/App_Themes/Default" type="dir" />
+					<then>
+						<echo message="Applying theme from the backup of last installation ..!!" />
+						<delete dir="${iishome}/${app}/App_Themes/Default" />
+						<copy todir="${iishome}/${app}/App_Themes" preservelastmodified="true" >
+							<fileset dir="${patchdir}/${timestamp}/backup/${app}/App_Themes/Default" />
+						</copy>
+					</then>
+					<else>
+						<echo message="Backup folder does not contain theme directory..!!" />
+					</else>
+				</if>
 			</else>
 		</if>
 	</target>
 	
-	<target name="Install" depends="MachineInfo, StopAppPool, BackupCurrInstall, CopyPackage, InstallNewPackage, ApplyCustomTheme, SetupConfigFiles, StartAppPool">
+	<target name="Install" depends="MachineInfo, VerifyPackage, StopAppPool, BackupCurrInstall, InstallNewPackage, ApplyCustomTheme, InstallCacheConsole, SetupConfigFiles, StartAppPool">
 		<echo message="Installation Completed for ${package}." />
 		<antcall target="EmailNotification" />
 		<record name="${patchdir}/${timestamp}/log/install.debug-${timestamp-HHmm}.log" loglevel="verbose" action="stop" />
@@ -240,7 +250,7 @@
 		</replace>
 	</target>
 	
-	<target name="QCInstall" depends="MachineInfo, StopWebIIS, StopIIS, BackupCurrInstall, CopyPackage, InstallNewPackage, ApplyCustomTheme, SetupConfigFiles, StartIIS, StartWebIIS">
+	<target name="QCInstall" depends="MachineInfo, VerifyPackage, StopWebIIS, StopIIS, BackupCurrInstall, CopyPackage, InstallNewPackage, ApplyCustomTheme, InstallCacheConsole, SetupConfigFiles, StartIIS, StartWebIIS">
 		<echo message="Installation Completed for ${package}." />
 		<antcall target="EmailNotification" />
 		<record name="${patchdir}/${timestamp}/log/install.debug-${timestamp-HHmm}.log" loglevel="verbose" action="stop" />
