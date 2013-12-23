@@ -1,11 +1,12 @@
 <!-- Modification History -->
 
+<!-- Dharmendra Kumar   12/23/2013  Added support to replace config token in CacheConsole.    -->
 <!-- Dharmendra Kumar   12/20/2013  Added functionality to install CacheConsole.
                                     Split Install and QCInstall target.
 									Add VerifyPackage target.								  -->
 <!-- Dharmendra Kumar   11/28/2013  Added functionality to replace token with password        -->
 <!-- Dharmendra Kumar	11/25/2013	Initial coding to deploy wealthportal package on UAT/PROD -->
-<!-- version 2013.0.3 -->
+<!-- version 2013.0.4 -->
 <project name="DeployOnIIS" basedir=".." default="MachineInfo">
 <taskdef resource="net/sf/antcontrib/antcontrib.properties"/>
 	<tstamp>
@@ -169,7 +170,12 @@
 				<move todir="${consolehome}/${consoledir}" preservelastmodified="true" >
 					<fileset dir="${patchdir}/${timestamp}/new/${consolepackage}" />
 				</move>
-				<antcall target="SetupConfigFiles" />
+				<if>
+				<equals arg1="${package.exists}" arg2="true" />
+				<else>
+					<antcall target="SetupConfigFiles" />
+				</else>
+				</if>
 			</then>
 			<else>
 				<echo message="${patchdir}/${timestamp}/new/${consolepackage}.zip does not exists, skipping installation..!!!" />
@@ -206,6 +212,11 @@
 			<equals arg1="${consolepackage.exists}" arg2="true" />
 			<then>
 				<move file="${consolehome}/${consoledir}/Sungard.Trust.WealthPortal.ClearCacheConsole.exe.${envprofile}.config" tofile="${consolehome}/${consoledir}/Sungard.Trust.WealthPortal.ClearCacheConsole.exe.config" preservelastmodified="true" force="true" />
+				<replace file="${consolehome}/${consoledir}/Sungard.Trust.WealthPortal.ClearCacheConsole.exe.config">
+					<replacefilter token="@ServerName@" value="${ServerName}" />
+					<replacefilter token="@FlagCheck@" value="${FlagCheck}" />
+					<replacefilter token="@FlagSet@" value="${FlagSet}" />
+				</replace>
 			</then>
 		</if>
 	</target>
