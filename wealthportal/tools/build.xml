@@ -261,7 +261,7 @@
 		</replace>
 	</target>
 	
-	<target name="QCInstall" depends="MachineInfo, VerifyPackage, StopWebIIS, StopIIS, BackupCurrInstall, CopyPackage, InstallNewPackage, ApplyCustomTheme, InstallCacheConsole, SetupConfigFiles, StartIIS, StartWebIIS">
+	<target name="QCInstall" depends="MachineInfo, CopyPackage, VerifyPackage, StopWebIIS, StopIIS, BackupCurrInstall, InstallNewPackage, ApplyCustomTheme, InstallCacheConsole, SetupConfigFiles, StartIIS, StartWebIIS">
 		<echo message="Installation Completed for ${package}." />
 		<antcall target="EmailNotification" />
 		<record name="${patchdir}/${timestamp}/log/install.debug-${timestamp-HHmm}.log" loglevel="verbose" action="stop" />
