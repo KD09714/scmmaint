@@ -48,6 +48,7 @@
 			<arg value="/c" />
 			<arg value="appcmd stop apppool /apppool.name:${applicationpool}" />
 		</exec>
+		<sleep seconds="10"/>
 	</target>
 	
 	<target name="StartAppPool" if="applicationpool" >
@@ -55,6 +56,7 @@
 			<arg value="/c" />
 			<arg value="appcmd start apppool /apppool.name:${applicationpool}" />
 		</exec>
+		<sleep seconds="10"/>
 	</target>
 	
 	<target name="RestartAppPool" depends="StopAppPool, StartAppPool" if="applicationpool" >
@@ -66,6 +68,7 @@
 			<arg value="/c" />
 			<arg value="sc stop ${eventservicename}" />
 		</exec>
+		<sleep seconds="10"/>
 	</target>
 	
 	<target name="StartEventService" if="eventservicename">
@@ -73,6 +76,7 @@
 			<arg value="/c" />
 			<arg value="sc start ${eventservicename}" />
 		</exec>
+		<sleep seconds="10"/>
 	</target>
 	
 	<target name="RestartEventService" depends="StopEventService, StartEventService" if="eventservicename">
@@ -84,6 +88,7 @@
 			<arg value="/c" />
 			<arg value="sc stop ${trustservicename}" />
 		</exec>
+		<sleep seconds="10"/>
 	</target>
 	
 	<target name="StartTrustService" if="trustservicename">
@@ -91,6 +96,7 @@
 			<arg value="/c" />
 			<arg value="sc start ${trustservicename}" />
 		</exec>
+		<sleep seconds="10"/>
 	</target>
 	
 	<target name="RestartTrustService" depends="StopTrustService, StartTrustService" if="trustservicename">
