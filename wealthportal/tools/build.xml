@@ -1,5 +1,6 @@
 <!-- Modification History -->
 
+<!-- Dharmendra Kumar   01/17/2014  Add verifybackup target.                                  -->
 <!-- Dharmendra Kumar   01/17/2014  zip the backup package, Add Rollback functionality        -->
 <!-- Dharmendra Kumar   12/23/2013  Added support to replace config token in CacheConsole.    -->
 <!-- Dharmendra Kumar   12/20/2013  Added functionality to install CacheConsole.
@@ -7,7 +8,7 @@
 									Add VerifyPackage target.								  -->
 <!-- Dharmendra Kumar   11/28/2013  Added functionality to replace token with password        -->
 <!-- Dharmendra Kumar	11/25/2013	Initial coding to deploy wealthportal package on UAT/PROD -->
-<!-- version 2014.0.1 -->
+<!-- version 2014.0.2 -->
 <project name="DeployOnIIS" basedir=".." default="MachineInfo">
 <taskdef resource="net/sf/antcontrib/antcontrib.properties"/>
 	<tstamp>
@@ -158,7 +159,7 @@
 		</move>
 	</target>
 	
-	<target name="RevertPackage">
+	<target name="VerifyBackup">
 		<echo message="Last Backup Date is found to be ${lastbackupdate}" />
 		<if>
 			<available file="${patchdir}/${lastbackupdate}/backup/${package}.zip" />
@@ -169,6 +170,9 @@
 				<fail message="${patchdir}/${lastbackupdate}/backup/${package}.zip does not exists..!!" />
 			</else>
 		</if>
+	</target>
+	
+	<target name="RevertPackage">
 		<if>
 			<equals arg1="${confirmrollback}" arg2="y" />
 			<then>
@@ -295,7 +299,7 @@
 		<echo message="lastbackupdate=${timestamp}" file="cfg/lastinstall.cfg" force="true" />
 	</target>
 
-	<target name="Rollback" depends="MachineInfo, StopAppPool, BackupCurrInstall, RevertPackage, StartAppPool">
+	<target name="Rollback" depends="MachineInfo, VerifyBackup, StopAppPool, BackupCurrInstall, RevertPackage, StartAppPool">
 		<echo message="Rollback Completed for ${package}." />
 		<antcall target="EmailNotification" />
 	</target>
