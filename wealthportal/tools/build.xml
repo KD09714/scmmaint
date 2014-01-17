@@ -1,12 +1,13 @@
 <!-- Modification History -->
 
+<!-- Dharmendra Kumar   01/17/2014  zip the backup package, Add Rollback functionality        -->
 <!-- Dharmendra Kumar   12/23/2013  Added support to replace config token in CacheConsole.    -->
 <!-- Dharmendra Kumar   12/20/2013  Added functionality to install CacheConsole.
                                     Split Install and QCInstall target.
 									Add VerifyPackage target.								  -->
 <!-- Dharmendra Kumar   11/28/2013  Added functionality to replace token with password        -->
 <!-- Dharmendra Kumar	11/25/2013	Initial coding to deploy wealthportal package on UAT/PROD -->
-<!-- version 2013.0.4 -->
+<!-- version 2014.0.1 -->
 <project name="DeployOnIIS" basedir=".." default="MachineInfo">
 <taskdef resource="net/sf/antcontrib/antcontrib.properties"/>
 	<tstamp>
@@ -15,6 +16,7 @@
 	</tstamp>
 	
 	<property file="cfg/deploy.cfg"/>
+	<property file="cfg/lastinstall.cfg" />
 	<property name="patchdir" value="D:/wealthportal" />
     <mkdir dir="${patchdir}/${timestamp}/log" />
 	<record name="${patchdir}/${timestamp}/log/install-${timestamp-HHmm}.log" />
@@ -118,9 +120,9 @@
 
 	<target name="BackupCurrInstall" >
 		<if>
-			<available file="${patchdir}/${timestamp}/backup/${app}" type="dir" />
+			<available file="${patchdir}/${timestamp}/backup/${package}.zip" />
 			<then>
-				<move file="${patchdir}/${timestamp}/backup/${app}" tofile="${patchdir}/${timestamp}/backup/${app}-${timestamp-HHmm}" preservelastmodified="true" />
+				<move file="${patchdir}/${timestamp}/backup/${package}.zip" tofile="${patchdir}/${timestamp}/backup/${package}-${timestamp-HHmm}.zip" preservelastmodified="true" />
 			</then>
 		</if>
 		
@@ -130,6 +132,15 @@
 			<fileset dir="${iishome}/${app}" />
 		</copy>
 		<delete dir="${iishome}/${app}" />
+
+		<!-- Zip the backup package -->
+		<move file="${patchdir}/${timestamp}/backup/${app}" tofile="${patchdir}/${timestamp}/backup/${package}" />
+		<zip destfile="${patchdir}/${timestamp}/backup/${package}.zip" >
+			<fileset dir="${patchdir}/${timestamp}/backup/" >
+				<include name="${package}/**" />
+			</fileset>
+		</zip>
+		<delete dir="${patchdir}/${timestamp}/backup/${package}" />
 	</target>
 
 	<target name="CopyPackage" if="packagesource">
@@ -145,6 +156,28 @@
 		<move todir="${iishome}/${app}" preservelastmodified="true" >
 			<fileset dir="${patchdir}/${timestamp}/new/${package}" />
 		</move>
+	</target>
+	
+	<target name="RevertPackage">
+		<echo message="Last Backup Date is found to be ${lastbackupdate}" />
+		<if>
+			<available file="${patchdir}/${lastbackupdate}/backup/${package}.zip" />
+			<then>
+				<input message="Do you want to revert with the backup of ${lastbackupdate}" validargs="y,n" addproperty="confirmrollback" />
+			</then>
+			<else>
+				<fail message="${patchdir}/${lastbackupdate}/backup/${package}.zip does not exists..!!" />
+			</else>
+		</if>
+		<if>
+			<equals arg1="${confirmrollback}" arg2="y" />
+			<then>
+				<unzip src="${patchdir}/${lastbackupdate}/backup/${package}.zip" dest="${patchdir}/${lastbackupdate}/backup" />
+				<move todir="${iishome}/${app}" preservelastmodified="true" >
+					<fileset dir="${patchdir}/${lastbackupdate}/backup/${package}" />
+				</move>
+			</then>
+		</if>
 	</target>
 	
 	<target name="InstallCacheConsole" if="consolepackage" >
@@ -259,6 +292,12 @@
 		<replace file="${iishome}/${app}/Web.config">
 			<replacefilter token="@SunGard@" value="${SunGard}" />
 		</replace>
+		<echo message="lastbackupdate=${timestamp}" file="cfg/lastinstall.cfg" force="true" />
+	</target>
+
+	<target name="Rollback" depends="MachineInfo, StopAppPool, BackupCurrInstall, RevertPackage, StartAppPool">
+		<echo message="Rollback Completed for ${package}." />
+		<antcall target="EmailNotification" />
 	</target>
 	
 	<target name="QCInstall" depends="MachineInfo, CopyPackage, VerifyPackage, StopWebIIS, StopIIS, BackupCurrInstall, InstallNewPackage, ApplyCustomTheme, InstallCacheConsole, SetupConfigFiles, StartIIS, StartWebIIS">
@@ -270,6 +309,7 @@
 		<replace file="${iishome}/${app}/Web.config">
 			<replacefilter token="@SunGard@" value="${SunGard}" />
 		</replace>
+		<echo message="lastbackupdate=${timestamp}" file="cfg/lastinstall.cfg" force="true" />
 	</target>
 	
 	<target name="EmailNotification" if="emailsmtpserver">
