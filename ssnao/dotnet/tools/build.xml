@@ -1,7 +1,8 @@
 <!-- Modification History -->
 
-<!-- Dharmendra Kumar	01/18/2014	Initial coding to deploy dotnet package of SS NAO -->
-<!-- version 2014.0.1 -->
+<!-- Dharmendra Kumar   01/19/2014  Added Support to handle multiple virtual directory -->
+<!-- Dharmendra Kumar	01/18/2014	Initial coding to deploy dotnet package of SS NAO  -->
+<!-- version 2014.0.2 -->
 <project name="DeployOnIIS" basedir=".." default="MachineInfo">
 <taskdef resource="net/sf/antcontrib/antcontrib.properties"/>
 	<tstamp>
@@ -34,7 +35,7 @@
 			<available file="${patchdir}/${timestamp}/new/${package}.zip" />
 			<then>
 				<property name="package.exists" value="true" />
-				<echo message="${package} Exists for Installation....!!" />
+				<echo message="${package}.zip Exists for Installation....!!" />
 			</then>
 			<else>
 				<fail message="${patchdir}/${timestamp}/new/${package}.zip does not Exists..!!!" />
@@ -61,28 +62,31 @@
 	</target>
 
 	<target name="BackupCurrInstall" >
-		<if>
-			<available file="${patchdir}/${timestamp}/backup/${package}.zip" />
-			<then>
-				<move file="${patchdir}/${timestamp}/backup/${package}.zip" tofile="${patchdir}/${timestamp}/backup/${package}-${timestamp-HHmm}.zip" preservelastmodified="true" />
-			</then>
-		</if>
+		<for list="${virtualdir}" delimiter=";" param="vdir">
+			<sequential>
+				<if>
+					<available file="${patchdir}/${timestamp}/backup/@{vdir}.zip" />
+					<then>
+						<move file="${patchdir}/${timestamp}/backup/@{vdir}.zip" tofile="${patchdir}/${timestamp}/backup/@{vdir}-${timestamp-HHmm}.zip" preservelastmodified="true" />
+					</then>
+				</if>
 		
-		<echo message="Backing up the current installation.." />
-		<mkdir dir="${iishome}/${app}" />
-		<copy todir="${patchdir}/${timestamp}/backup/${app}" preservelastmodified="true" overwrite="true" force="true">
-			<fileset dir="${iishome}/${app}" />
-		</copy>
-		<delete dir="${iishome}/${app}" />
+				<echo message="Backing up the current installation.." />
+				<mkdir dir="${iishome}/@{vdir}" />
+				<copy todir="${patchdir}/${timestamp}/backup/@{vdir}" preservelastmodified="true" overwrite="true" force="true">
+					<fileset dir="${iishome}/@{vdir}" />
+				</copy>
+				<delete dir="${iishome}/@{vdir}" />
 
-		<!-- Zip the backup package -->
-		<move file="${patchdir}/${timestamp}/backup/${app}" tofile="${patchdir}/${timestamp}/backup/${package}" />
-		<zip destfile="${patchdir}/${timestamp}/backup/${package}.zip" >
-			<fileset dir="${patchdir}/${timestamp}/backup/" >
-				<include name="${package}/**" />
-			</fileset>
-		</zip>
-		<delete dir="${patchdir}/${timestamp}/backup/${package}" />
+				<!-- Zip the backup package -->
+				<zip destfile="${patchdir}/${timestamp}/backup/@{vdir}.zip" >
+					<fileset dir="${patchdir}/${timestamp}/backup/" >
+						<include name="@{vdir}/**" />
+					</fileset>
+				</zip>
+				<delete dir="${patchdir}/${timestamp}/backup/@{vdir}" />
+			</sequential>
+		</for>
 	</target>
 
 	<target name="CopyPackage" if="packagesource">
@@ -94,43 +98,53 @@
 	</target>
 	
 	<target name="InstallNewPackage" depends="BackupCurrInstall" >
-		<unzip src="${patchdir}/${timestamp}/new/${package}.zip" dest="${patchdir}/${timestamp}/new" />
-		<move todir="${iishome}/${app}" preservelastmodified="true" >
-			<fileset dir="${patchdir}/${timestamp}/new/${package}" />
-		</move>
-	</target>
-	
-	<target name="SetupConfigFiles">
-		<for list="${configtosetup}" delimiter=";" param = "cfgfilewpath">
+		<for list="${virtualdir}" delimiter=";" param="vdir">
 			<sequential>
-				<var name="cfgfile" unset="true"/>
-				<var name="cfgdir" unset="true"/>
-				<var name="cfgfilewoext" unset="true"/>
-
-				<basename file="${iishome}/${app}/@{cfgfilewpath}" property="cfgfile" />
-				<dirname file="${iishome}/${app}/@{cfgfilewpath}" property="cfgdir" />
-				<for list="${cfgfile}" delimiter="." param = "ext">
-					<sequential>
-						<var name="ext" unset="true"/>
-						<property name="ext" value="@{ext}" />
-						<property name="cfgfilewoext" value="@{ext}" />
-					</sequential>
-				</for>
-				<move file="${cfgdir}/${cfgfilewoext}.${envprofile}.${ext}" tofile="${cfgdir}/${cfgfilewoext}.${ext}" preservelastmodified="true" force="true" />
-				<echo message="Configuring ${cfgdir}/${cfgfile} completed." />
+				<unzip src="${patchdir}/${timestamp}/new/${package}.zip" dest="${patchdir}/${timestamp}/new" />
+				<move todir="${iishome}/@{vdir}" preservelastmodified="true" >
+					<fileset dir="${patchdir}/${timestamp}/new/${package}" />
+				</move>
 			</sequential>
 		</for>
 	</target>
-		
-	<target name="Install" depends="MachineInfo, VerifyPackage, StopAppPool, BackupCurrInstall, InstallNewPackage, ApplyCustomTheme, InstallCacheConsole, SetupConfigFiles, StartAppPool">
+	
+	<target name="SetupConfigFiles">
+		<for list="${virtualdir}" delimiter=";" param="vdir">
+			<sequential>
+				<for list="${@{vdir}-configtosetup}" delimiter="|" param = "profile-cfgfilewpath">
+					<sequential>
+						<property name="envprofile" value="@{profile-cfgfilewpath}" />
+						<var name="configtosetup" unset="true"/>
+						<property name="configtosetup" value="@{profile-cfgfilewpath}" />
+					</sequential>
+				</for>
+				<for list="${configtosetup}" delimiter=";" param = "cfgfilewpath">
+					<sequential>
+						<var name="cfgfile" unset="true"/>
+						<var name="cfgdir" unset="true"/>
+						<var name="cfgfilewoext" unset="true"/>
+
+						<basename file="${iishome}/@{vdir}/@{cfgfilewpath}" property="cfgfile" />
+						<dirname file="${iishome}/@{vdir}/@{cfgfilewpath}" property="cfgdir" />
+						<for list="${cfgfile}" delimiter="." param = "ext">
+							<sequential>
+								<var name="ext" unset="true"/>
+								<property name="ext" value="@{ext}" />
+							</sequential>
+						</for>
+						<basename file="${installroot}/@{vdir}/@{cfgfilewpath}" property="cfgfilewoext" suffix="${ext}" />
+						<move file="${cfgdir}/${cfgfilewoext}.${envprofile}.${ext}" tofile="${cfgdir}/${cfgfilewoext}.${ext}" preservelastmodified="true" force="true" overwrite="true" />
+						<echo message="Configuring ${cfgdir}/${cfgfile} completed." />
+					</sequential>
+				</for>
+			</sequential>
+		</for>
+	</target>
+	
+	<target name="Install" depends="MachineInfo, VerifyPackage, StopAppPool, BackupCurrInstall, InstallNewPackage, SetupConfigFiles, StartAppPool">
 		<echo message="Installation Completed for ${package}." />
 		<antcall target="EmailNotification" />
 		<record name="${patchdir}/${timestamp}/log/install.debug-${timestamp-HHmm}.log" loglevel="verbose" action="stop" />
-	<!-- Post Installation Steps -->
-		<input message="Please Enter Database password (App Server) Or Infinity password (Web Server) :" addproperty="SunGard" />
-		<replace file="${iishome}/${app}/Web.config">
-			<replacefilter token="@SunGard@" value="${SunGard}" />
-		</replace>
 		<echo message="lastbackupdate=${timestamp}" file="cfg/lastinstall.cfg" force="true" />
 	</target>
 	
