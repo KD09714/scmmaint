@@ -1,8 +1,9 @@
 <!-- Modification History -->
 
-<!-- Dharmendra Kumar   01/19/2014  Added Support to handle multiple virtual directory -->
+<!-- Dharmendra Kumar   01/20/2014      Added Support to start/stop multiple application pool -->
+<!-- Dharmendra Kumar   01/19/2014      Added Support to handle multiple virtual directory -->
 <!-- Dharmendra Kumar	01/18/2014	Initial coding to deploy dotnet package of SS NAO  -->
-<!-- version 2014.0.2 -->
+<!-- version 2014.0.3 -->
 <project name="DeployOnIIS" basedir=".." default="MachineInfo">
 <taskdef resource="net/sf/antcontrib/antcontrib.properties"/>
 	<tstamp>
@@ -44,17 +45,25 @@
 	</target>
 	
 	<target name="StopAppPool" if="applicationpool">
-		<exec executable="cmd" failonerror="true">
-			<arg value="/c" />
-			<arg value="appcmd stop apppool /apppool.name:${applicationpool}" />
-		</exec>
+		<for list="${applicationpool}" delimiter=";" param="apppool">
+			<sequential>
+				<exec executable="cmd" failonerror="true">
+					<arg value="/c" />
+					<arg value="appcmd stop apppool /apppool.name:@{apppool}" />
+				</exec>
+			</sequential>
+		</for>
 	</target>
 	
 	<target name="StartAppPool" if="applicationpool">
-		<exec executable="cmd" failonerror="true">
-			<arg value="/c" />
-			<arg value="appcmd start apppool /apppool.name:${applicationpool}" />
-		</exec>
+		<for list="${applicationpool}" delimiter=";" param="apppool">
+			<sequential>
+				<exec executable="cmd" failonerror="true">
+					<arg value="/c" />
+					<arg value="appcmd start apppool /apppool.name:@{apppool}" />
+				</exec>
+			</sequential>
+		</for>
 	</target>
 	
 	<target name="RestartAppPool" depends="StopAppPool, StartAppPool">
