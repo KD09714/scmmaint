@@ -1,11 +1,12 @@
 <!-- Change History-->
 
+<!-- 01/20/2014   Dharmendra Kumar     Copy table list to metanew before running build.    -->
 <!-- 12/04/2013   Dharmendra Kumar     Rename HardCode.zip to append release in name.      -->
 <!-- 08/01/2013   Dharmendra Kumar     Added testpatch target to run daily test builds.    -->
 <!-- 07/24/2013   Dharmendra Kumar     Added support to zip the hardcode.                  -->
 <!-- 06/27/2013   Dharmendra Kumar     Added support to hardcode build using bat file      -->
 <!-- 06/12/2012   Dharmendra Kumar     Initial Coding to Automate Charlotte Hardcode build -->
-<!-- rev=2013.1.4-->
+<!-- rev=2014.0.1-->
 
 <project name="clthcbuild" default="vsshistory" basedir="..">
 <taskdef resource="net/sf/antcontrib/antcontrib.properties"/>
@@ -78,6 +79,7 @@
 			replace="Set V=${yearstamp}.${monthstamp}.${daystamp}"
 			byline="true"
 		/>
+		<copy file="${workdir}\HardCode\TableLst.Dat" todir="${metamakedir}" overwrite="true" force="true" />
 	</target>
 	
 	<target name="hardcode-build" >
@@ -85,7 +87,6 @@
 			<arg value="/c" />
 			<arg value="RunHC.bat ${hcservername},${hcdbname},${targetdir},01,${workdir}/HardCode" />
 		</exec>
-		<move file="${targetdir}/HardCode.zip" tofile="${targetdir}/HardCode${rel}.zip" />
 	</target>
 	
 	<target name="vsscheckin-upgrade">
@@ -105,9 +106,10 @@
 			<echo message="HardCode.zip file exists." />
 		</then>
 		<else>
-			<zip destfile="${targetdir}/HardCode.zip" basedir="${targetdir}" includes="HardCode.ATD" />		
+			<zip destfile="${targetdir}/HardCode.zip" basedir="${targetdir}" includes="HardCode.ATD" />
 		</else>
 		</if>
+		<move file="${targetdir}/HardCode.zip" tofile="${targetdir}/HardCode${rel}.zip" />
 		<delete file="${archievedir}/${rel}/hc-clt.zip" />
 		<zip destfile="${archievedir}/${rel}/hc-clt.zip" basedir="${targetdir}/UpGrade" />
 	</target>
