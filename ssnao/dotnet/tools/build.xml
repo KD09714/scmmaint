@@ -125,7 +125,7 @@
 	</target>
 
 	<target name="CopyPackage" if="packagesource">
-		<copy todir="${patchdir}/${timestamp}/new" >
+		<copy todir="${patchdir}/${timestamp}/new" overwrite="true" force="true">
 			<fileset dir="${packagesource}" >
 				<include name="*.zip" />
 			</fileset>
