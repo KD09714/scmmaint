@@ -1,5 +1,6 @@
 <!-- Modification History -->
 
+<!-- Dharmendra Kumar   01/21/2014  In case user does not opt to Rollback.                    -->
 <!-- Dharmendra Kumar   01/17/2014  Add verifybackup target.                                  -->
 <!-- Dharmendra Kumar   01/17/2014  zip the backup package, Add Rollback functionality        -->
 <!-- Dharmendra Kumar   12/23/2013  Added support to replace config token in CacheConsole.    -->
@@ -8,7 +9,7 @@
 									Add VerifyPackage target.								  -->
 <!-- Dharmendra Kumar   11/28/2013  Added functionality to replace token with password        -->
 <!-- Dharmendra Kumar	11/25/2013	Initial coding to deploy wealthportal package on UAT/PROD -->
-<!-- version 2014.0.2 -->
+<!-- version 2014.0.3 -->
 <project name="DeployOnIIS" basedir=".." default="MachineInfo">
 <taskdef resource="net/sf/antcontrib/antcontrib.properties"/>
 	<tstamp>
@@ -169,6 +170,12 @@
 			<else>
 				<fail message="${patchdir}/${lastbackupdate}/backup/${package}.zip does not exists..!!" />
 			</else>
+		</if>
+		<if>
+			<equals arg1="${confirmrollback}" arg2="n" />
+			<then>
+				<fail message="User has opted not to proceed ....., Exiting." />
+			</then>
 		</if>
 	</target>
 	
