@@ -192,7 +192,7 @@
 		</for>
 	</target>
 	
-	<target name="Install" depends="MachineInfo, VerifyPackage, CopyPackage, StopAppPool, BackupCurrInstall, InstallNewPackage, SetupConfigFiles, StartAppPool">
+	<target name="Install" depends="MachineInfo, CopyPackage, VerifyPackage, StopAppPool, BackupCurrInstall, InstallNewPackage, SetupConfigFiles, StartAppPool">
 		<echo message="Installation Completed for ${package}." />
 		<property name="subject" value="Installation Completed for ${package} on ${env.COMPUTERNAME}" />
 		<antcall target="EmailNotification" />
