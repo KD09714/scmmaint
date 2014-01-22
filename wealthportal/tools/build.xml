@@ -1,6 +1,7 @@
 <!-- Modification History -->
 
-<!-- Dharmendra Kumar   01/21/2014  In case user does not opt to Rollback.                    -->
+<!-- Dharmendra Kumar   01/21/2014  In case user does not opt to Rollback.                    
+			            Edit Email subject.                                       -->
 <!-- Dharmendra Kumar   01/17/2014  Add verifybackup target.                                  -->
 <!-- Dharmendra Kumar   01/17/2014  zip the backup package, Add Rollback functionality        -->
 <!-- Dharmendra Kumar   12/23/2013  Added support to replace config token in CacheConsole.    -->
@@ -9,7 +10,7 @@
 									Add VerifyPackage target.								  -->
 <!-- Dharmendra Kumar   11/28/2013  Added functionality to replace token with password        -->
 <!-- Dharmendra Kumar	11/25/2013	Initial coding to deploy wealthportal package on UAT/PROD -->
-<!-- version 2014.0.3 -->
+<!-- version 2014.0.4 -->
 <project name="DeployOnIIS" basedir=".." default="MachineInfo">
 <taskdef resource="net/sf/antcontrib/antcontrib.properties"/>
 	<tstamp>
@@ -296,6 +297,7 @@
 	
 	<target name="Install" depends="MachineInfo, VerifyPackage, StopAppPool, BackupCurrInstall, InstallNewPackage, ApplyCustomTheme, InstallCacheConsole, SetupConfigFiles, StartAppPool">
 		<echo message="Installation Completed for ${package}." />
+		<property name="subject" value="Installation Completed for ${package} on ${env.COMPUTERNAME}" />
 		<antcall target="EmailNotification" />
 		<record name="${patchdir}/${timestamp}/log/install.debug-${timestamp-HHmm}.log" loglevel="verbose" action="stop" />
 	<!-- Post Installation Steps -->
@@ -308,6 +310,7 @@
 
 	<target name="Rollback" depends="MachineInfo, VerifyBackup, StopAppPool, BackupCurrInstall, RevertPackage, StartAppPool">
 		<echo message="Rollback Completed for ${package}." />
+		<property name="subject" value="Rollback Completed for ${package} on ${env.COMPUTERNAME}" />
 		<antcall target="EmailNotification" />
 	</target>
 	
@@ -324,7 +327,7 @@
 	</target>
 	
 	<target name="EmailNotification" if="emailsmtpserver">
-		<mail mailhost="${emailsmtpserver}" subject="Installation Completed for ${package} on ${env.COMPUTERNAME}" from="${emailuser}" tolist="${emailtolist},${defaultemailto}" >
+		<mail mailhost="${emailsmtpserver}" subject="${subject}" from="${emailuser}" tolist="${emailtolist},${defaultemailto}" >
 			<message>Installation log attached.</message>
 			<attachments>
 				<fileset dir="${patchdir}/${timestamp}/log">
