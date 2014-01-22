@@ -201,7 +201,7 @@
 		<for list="${virtualdir}" delimiter=";" param="vdir">
 			<sequential>
 				<replace file="${iishome}/@{vdir}/Web.config">
-                        		<replacefilter token="@@G2_AO@@	" value="${G2_AO}" />
+                        		<replacefilter token="@@G2_AO@@" value="${G2_AO}" />
                         		<replacefilter token="@@G2_AO_Local@@" value="${G2_AO_Local}" />
                         		<replacefilter token="@@CSA@@" value="${CSA}" />
                         		<replacefilter token="@@IPP@@" value="${IPP}" />
