@@ -1,10 +1,11 @@
 <!-- Modification History -->
 
+<!-- Dharmendra Kumar   01/21/2014      Replace password in cfg file at runtime.            -->
 <!-- Dharmendra Kumar   01/22/2014      Added Support to Rollback a package                 -->
 <!-- Dharmendra Kumar   01/20/2014      Added Support to start/stop multiple application pool -->
 <!-- Dharmendra Kumar   01/19/2014      Added Support to handle multiple virtual directory -->
 <!-- Dharmendra Kumar	01/18/2014	Initial coding to deploy dotnet package of SS NAO  -->
-<!-- version 2014.0.4 -->
+<!-- version 2014.0.5 -->
 <project name="DeployOnIIS" basedir=".." default="MachineInfo">
 <taskdef resource="net/sf/antcontrib/antcontrib.properties"/>
 	<tstamp>
@@ -196,7 +197,19 @@
 		<property name="subject" value="Installation Completed for ${package} on ${env.COMPUTERNAME}" />
 		<antcall target="EmailNotification" />
 		<record name="${patchdir}/${timestamp}/log/install.debug-${timestamp-HHmm}.log" loglevel="verbose" action="stop" />
-		<echo message="lastbackupdate=${timestamp}" file="cfg/lastinstall.cfg" force="true" />
+		
+		<for list="${virtualdir}" delimiter=";" param="vdir">
+			<sequential>
+				<replace file="${iishome}/@{vdir}/Web.config">
+                        		<replacefilter token="@@G2_AO@@	" value="${G2_AO}" />
+                        		<replacefilter token="@@G2_AO_Local@@" value="${G2_AO_Local}" />
+                        		<replacefilter token="@@CSA@@" value="${CSA}" />
+                        		<replacefilter token="@@IPP@@" value="${IPP}" />
+                        		<replacefilter token="@@IPP_Custom@@" value="${IPP_Custom}" />
+				</replace>
+			</sequential>
+		</for>
+                <echo message="lastbackupdate=${timestamp}" file="cfg/lastinstall.cfg" force="true" />
 	</target>
 	
 	<target name="Rollback" depends="MachineInfo, VerifyBackup, StopAppPool, BackupCurrInstall, RevertPackage, StartAppPool">
