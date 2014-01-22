@@ -1,11 +1,12 @@
 <!-- Modification History -->
 
-<!-- Dharmendra Kumar   01/21/2014      Replace password in cfg file at runtime.            -->
+<!-- Dharmendra Kumar   01/22/2014      Replace password in cfg file at runtime.            
+					Update rollback code                                -->
 <!-- Dharmendra Kumar   01/22/2014      Added Support to Rollback a package                 -->
 <!-- Dharmendra Kumar   01/20/2014      Added Support to start/stop multiple application pool -->
 <!-- Dharmendra Kumar   01/19/2014      Added Support to handle multiple virtual directory -->
 <!-- Dharmendra Kumar	01/18/2014	Initial coding to deploy dotnet package of SS NAO  -->
-<!-- version 2014.0.5 -->
+<!-- version 2014.0.6 -->
 <project name="DeployOnIIS" basedir=".." default="MachineInfo">
 <taskdef resource="net/sf/antcontrib/antcontrib.properties"/>
 	<tstamp>
@@ -60,14 +61,17 @@
 						<fail message="${patchdir}/${lastbackupdate}/backup/@{vdir}.zip does not Exists..!!!" />
 					</else>
 				</if>
+				<if>
+					<equals arg1="${confirmrollback}" arg2="n" />
+					<then>
+						<fail message="User has opted not to proceed ....., Exiting." />
+					</then>
+					<else>
+						<copy file="${patchdir}/${lastbackupdate}/backup/@{vdir}.zip" todir="${patchdir}/${timestamp}/rollback" overwrite="true" force="true" />
+					</else>
+				</if>
 			</sequential>
 		</for>
-		<if>
-			<equals arg1="${confirmrollback}" arg2="n" />
-			<then>
-				<fail message="User has opted not to proceed ....., Exiting." />
-			</then>
-		</if>
 	</target>
 	
 	<target name="StopAppPool" if="applicationpool">
@@ -149,9 +153,9 @@
                         <then>
                        		<for list="${virtualdir}" delimiter=";" param="vdir">
 					<sequential>
-                                		<unzip src="${patchdir}/${lastbackupdate}/backup/@{vdir}.zip" dest="${patchdir}/${lastbackupdate}/backup" />
+                                		<unzip src="${patchdir}/${timestamp}/rollback/@{vdir}.zip" dest="${patchdir}/${timestamp}/rollback" />
                                 		<move todir="${iishome}/@{vdir}" preservelastmodified="true" >
-                                        		<fileset dir="${patchdir}/${lastbackupdate}/backup/@{vdir}" />
+                                        		<fileset dir="${patchdir}/${timestamp}/rollback/@{vdir}" />
                                 		</move>
                                 	</sequential>
                                 </for>
