@@ -1,5 +1,6 @@
 <!-- Modification History -->
 
+<!-- Dharmendra Kumar   01/23/2014      Bounce IIS during deploy.                           -->
 <!-- Dharmendra Kumar   01/23/2014      Change the token.                                   -->
 <!-- Dharmendra Kumar   01/22/2014      Replace password in cfg file at runtime.            
 					Update rollback code                                -->
@@ -7,7 +8,7 @@
 <!-- Dharmendra Kumar   01/20/2014      Added Support to start/stop multiple application pool -->
 <!-- Dharmendra Kumar   01/19/2014      Added Support to handle multiple virtual directory -->
 <!-- Dharmendra Kumar	01/18/2014	Initial coding to deploy dotnet package of SS NAO  -->
-<!-- version 2014.0.7 -->
+<!-- version 2014.0.8 -->
 <project name="DeployOnIIS" basedir=".." default="MachineInfo">
 <taskdef resource="net/sf/antcontrib/antcontrib.properties"/>
 	<tstamp>
@@ -75,29 +76,21 @@
 		</for>
 	</target>
 	
-	<target name="StopAppPool" if="applicationpool">
-		<for list="${applicationpool}" delimiter=";" param="apppool">
-			<sequential>
-				<exec executable="cmd" failonerror="true">
-					<arg value="/c" />
-					<arg value="appcmd stop apppool /apppool.name:@{apppool}" />
-				</exec>
-			</sequential>
-		</for>
+	<target name="StopIIS" >
+		<exec executable="cmd" failonerror="true">
+			<arg value="/c" />
+			<arg value="iisreset /stop" />
+		</exec>
 	</target>
 	
-	<target name="StartAppPool" if="applicationpool">
-		<for list="${applicationpool}" delimiter=";" param="apppool">
-			<sequential>
-				<exec executable="cmd" failonerror="true">
-					<arg value="/c" />
-					<arg value="appcmd start apppool /apppool.name:@{apppool}" />
-				</exec>
-			</sequential>
-		</for>
+	<target name="StartIIS" >
+		<exec executable="cmd" failonerror="true">
+			<arg value="/c" />
+			<arg value="iisreset /start" />
+		</exec>
 	</target>
 	
-	<target name="RestartAppPool" depends="StopAppPool, StartAppPool">
+	<target name="RestartIIS" depends="StopIIS, StartIIS">
 		<echo message="Restart completed." />
 	</target>
 
@@ -197,7 +190,7 @@
 		</for>
 	</target>
 	
-	<target name="Install" depends="MachineInfo, CopyPackage, VerifyPackage, StopAppPool, BackupCurrInstall, InstallNewPackage, SetupConfigFiles, StartAppPool">
+	<target name="Install" depends="MachineInfo, CopyPackage, VerifyPackage, StopIIS, BackupCurrInstall, InstallNewPackage, SetupConfigFiles, StartIIS">
 		<echo message="Installation Completed for ${package}." />
 		<property name="subject" value="Installation Completed for ${package} on ${env.COMPUTERNAME}" />
 		<antcall target="EmailNotification" />
@@ -217,7 +210,7 @@
                 <echo message="lastbackupdate=${timestamp}" file="cfg/lastinstall.cfg" force="true" />
 	</target>
 	
-	<target name="Rollback" depends="MachineInfo, VerifyBackup, StopAppPool, BackupCurrInstall, RevertPackage, StartAppPool">
+	<target name="Rollback" depends="MachineInfo, VerifyBackup, StopIIS, BackupCurrInstall, RevertPackage, StartIIS">
                 <echo message="Rollback Completed for ${package}." />
                 <property name="subject" value="Rollback Completed for ${package} on ${env.COMPUTERNAME}" />
                 <antcall target="EmailNotification" />
