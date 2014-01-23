@@ -1,12 +1,13 @@
 <!-- Modification History -->
 
+<!-- Dharmendra Kumar   01/23/2014      Change the token.                                   -->
 <!-- Dharmendra Kumar   01/22/2014      Replace password in cfg file at runtime.            
 					Update rollback code                                -->
 <!-- Dharmendra Kumar   01/22/2014      Added Support to Rollback a package                 -->
 <!-- Dharmendra Kumar   01/20/2014      Added Support to start/stop multiple application pool -->
 <!-- Dharmendra Kumar   01/19/2014      Added Support to handle multiple virtual directory -->
 <!-- Dharmendra Kumar	01/18/2014	Initial coding to deploy dotnet package of SS NAO  -->
-<!-- version 2014.0.6 -->
+<!-- version 2014.0.7 -->
 <project name="DeployOnIIS" basedir=".." default="MachineInfo">
 <taskdef resource="net/sf/antcontrib/antcontrib.properties"/>
 	<tstamp>
@@ -205,11 +206,11 @@
 		<for list="${virtualdir}" delimiter=";" param="vdir">
 			<sequential>
 				<replace file="${iishome}/@{vdir}/Web.config">
-                        		<replacefilter token="@@G2_AO@@" value="${G2_AO}" />
-                        		<replacefilter token="@@G2_AO_Local@@" value="${G2_AO_Local}" />
-                        		<replacefilter token="@@CSA@@" value="${CSA}" />
-                        		<replacefilter token="@@IPP@@" value="${IPP}" />
-                        		<replacefilter token="@@IPP_Custom@@" value="${IPP_Custom}" />
+                        		<replacefilter token="@G2_AO@" value="${G2_AO}" />
+                        		<replacefilter token="@G2_AO_Local@" value="${G2_AO_Local}" />
+                        		<replacefilter token="@CSA@" value="${CSA}" />
+                        		<replacefilter token="@IPP@" value="${IPP}" />
+                        		<replacefilter token="@IPP_Custom@" value="${IPP_Custom}" />
 				</replace>
 			</sequential>
 		</for>
