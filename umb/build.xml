@@ -1,11 +1,12 @@
 <!-- Modification History -->
 
+<!-- Dharmendra Kumar   01/27/2014      Added support to perform installation of multiple packages. -->
 <!-- Dharmendra Kumar   12/16/2013      Do not delete/ recreate installation directory   -->
 <!-- Dharmendra Kumar   12/11/2013      Changed the way it derive cfgfilewoext variable  -->
 <!-- Dharmendra Kumar   12/11/2013      Added target sequence.                           -->
 <!-- Dharmendra Kumar   12/11/2013      Add target to bounce trust & exent services      -->
-<!-- Dharmendra Kumar	11/25/2013	Initial coding to deploy package for UMB custody -->
-<!-- version 2013.0.5 -->
+<!-- Dharmendra Kumar	11/25/2013	    Initial coding to deploy package for UMB custody -->
+<!-- version 2014.0.1 -->
 <project name="DeployOnIIS" basedir=".." default="MachineInfo">
 <taskdef resource="net/sf/antcontrib/antcontrib.properties"/>
 	<tstamp>
@@ -13,26 +14,53 @@
 		<format property="timestamp-HHmm" pattern="yyyyMMdd-HHmm"/>
 	</tstamp>
 	
-	<property file="cfg/${package}-deploy.cfg"/>
-	<property name="patchdir" value="D:/PatchHolding" />
+	<property file="cfg/deploy.cfg"/>
+	<property name="patchdir" value="D:/umbcustody" />
 	<mkdir dir="${patchdir}/${timestamp}/log" />
 	<record name="${patchdir}/${timestamp}/log/install-${timestamp-HHmm}.log" />
 	<record name="${patchdir}/${timestamp}/log/install.debug-${timestamp-HHmm}.log" loglevel="verbose" />
 	
 	<property environment="env" />
-	<property name="package" value="" />
-	<property name="app" value="${installdir}" />
 	<property name="emailuser" value="${env.USERNAME}@sungard.com" />
 	<property name="defaultemailto" value="codemovegrp1@sungard.com" />
 	<mkdir dir="${patchdir}/${timestamp}/new" />
-
 	
-	<target name="ValidateCfgFile">
+	<target name="ValidatePackage">
+		<for list="${package-installdir}" delimiter="|" param="pack-idir" >
+			<sequential>
+				<for list="@{pack-idir}" delimiter=":" param="pack" >
+					<sequential>
+						<if>
+						<available file="${patchdir}/${timestamp}/new/@{pack}.zip" />
+							<then>
+								<property name="package.exists" value="true" />
+								<echo message="@{pack}.zip exists for installation ..!!" />
+								
+								<property name="package" value="true" />
+								<var name="temp" unset="true" />
+								<property name="temp" value="${package}" />
+								<var name="package" unset="true" />
+								<if>
+								<equals arg1="${temp}" arg2="true" />
+									<then>
+										<property name="package" value="@{pack}" />
+									</then>
+									<else>
+										<property name="package" value="${temp},@{pack}" />
+									</else>
+								</if>
+							</then>
+						</if>
+					</sequential>
+				</for>
+			</sequential>
+		</for>
+		
 		<if>
-		<equals arg1="${package}" arg2="" />
-		<then>
-			<fail message="package property not set, please use -Dpackage=packagename option while calling ant" />
-		</then>
+		<equals arg1="${package.exists}" arg2="true" />
+			<else>
+				<fail message="No package exists for installation ...!!" />
+			</else>
 		</if>
 	</target>
 	
@@ -104,23 +132,40 @@
 	</target>
 	
 	<target name="BackupCurrInstall" depends="StopAppPool">
-		<if>
-		<available file="${patchdir}/${timestamp}/backup/${app}" type="dir" />
-		<then>
-			<move file="${patchdir}/${timestamp}/backup/${app}" tofile="${patchdir}/${timestamp}/backup/${app}-${timestamp-HHmm}" preservelastmodified="true" />
-		</then>
-		</if>
+		<for list="${package-installdir}" delimiter="|" param="pack-idir" >
+			<sequential>
+				<var name="p-name" unset="true" />
+				<for list="@{pack-idir}" delimiter=":" param="pack" >
+					<sequential>
+						<var name="p-dir" unset="true" />
+						<property name="p-dir" value="@{pack}" />
+						<property name="p-name" value="@{pack}" />
+					</sequential>
+				</for>
+				<if>
+				<available file="${patchdir}/${timestamp}/new/${p-name}.zip" />
+					<then>
+						<if>
+						<available file="${patchdir}/${timestamp}/backup/${p-name}" type="dir" />
+							<then>
+								<move file="${patchdir}/${timestamp}/backup/${p-name}" tofile="${patchdir}/${timestamp}/backup/${p-name}-${timestamp-HHmm}" preservelastmodified="true" />
+							</then>
+						</if>
 		
-		<echo message="Backing up the current installation.." />
-		<mkdir dir="${installroot}/${app}" />
-		<copy todir="${patchdir}/${timestamp}/backup/${app}" preservelastmodified="true" overwrite="true" force="true">
-			<fileset dir="${installroot}/${app}" />
-		</copy>
-		<delete>
-			<fileset dir="${installroot}/${app}" >
-				<include name="**/*" />
-			</fileset>
-		</delete>
+						<echo message="Backing up the current installation.." />
+						<mkdir dir="${installroot}/${p-dir}" />
+						<copy todir="${patchdir}/${timestamp}/backup/${p-name}" preservelastmodified="true" overwrite="true" force="true">
+							<fileset dir="${installroot}/${p-dir}" />
+						</copy>
+						<delete>
+						<fileset dir="${installroot}/${p-dir}" >
+							<include name="**/*" />
+						</fileset>
+						</delete>
+					</then>
+				</if>
+			</sequential>
+		</for>
 	</target>
 
 	<target name="CopyPackage" if="packagesource">
@@ -132,37 +177,69 @@
 	</target>
 	
 	<target name="InstallNewPackage" depends="BackupCurrInstall" >
-		<unzip src="${patchdir}/${timestamp}/new/${package}.zip" dest="${patchdir}/${timestamp}/new" />
-		<move todir="${installroot}/${installdir}" preservelastmodified="true" >
-			<fileset dir="${patchdir}/${timestamp}/new/${package}" >
-				<include name="**/*" />
-			</fileset>
-		</move>
+		<for list="${package-installdir}" delimiter="|" param="pack-idir" >
+			<sequential>
+				<var name="p-name" unset="true" />
+				<for list="@{pack-idir}" delimiter=":" param="pack" >
+					<sequential>
+						<var name="p-dir" unset="true" />
+						<property name="p-dir" value="@{pack}" />
+						<property name="p-name" value="@{pack}" />
+					</sequential>
+				</for>
+				
+				<if>
+				<available file="${patchdir}/${timestamp}/new/${p-name}.zip" />
+					<then>
+						<unzip src="${patchdir}/${timestamp}/new/${p-name}.zip" dest="${patchdir}/${timestamp}/new" />
+						<move todir="${installroot}/${p-dir}" preservelastmodified="true" >
+							<fileset dir="${patchdir}/${timestamp}/new/${p-name}" >
+								<include name="**/*" />
+							</fileset>
+						</move>
+						<delete dir="${patchdir}/${timestamp}/new/${p-name}" />
+					</then>
+				</if>
+			</sequential>
+		</for>
 	</target>
 	
 	<target name="SetupConfigFiles">
-		<for list="${configtosetup}" delimiter=";" param = "cfgfilewpath">
-		<sequential>
-		<var name="cfgfile" unset="true"/>
-		<var name="cfgdir" unset="true"/>
-		<var name="cfgfilewoext" unset="true"/>
+		<for list="${package-installdir}" delimiter="|" param="pack-idir" >
+			<sequential>
+				<var name="p-name" unset="true" />
+				<for list="@{pack-idir}" delimiter=":" param="pack" >
+					<sequential>
+						<var name="p-dir" unset="true" />
+						<property name="p-dir" value="@{pack}" />
+						<property name="p-name" value="@{pack}" />
+					</sequential>
+				</for>
 		
-		<basename file="${installroot}/${app}/@{cfgfilewpath}" property="cfgfile" />
-		<dirname file="${installroot}/${app}/@{cfgfilewpath}" property="cfgdir" />
-			<for list="${cfgfile}" delimiter="." param = "ext">
+			<for list="${${p-name}-configtosetup}" delimiter="|" param = "cfgfilewpath">
 				<sequential>
-					<var name="ext" unset="true"/>
-					<property name="ext" value="@{ext}" />
+					<var name="cfgfile" unset="true"/>
+					<var name="cfgdir" unset="true"/>
+					<var name="cfgfilewoext" unset="true"/>
+		
+					<basename file="${installroot}/${app}/@{cfgfilewpath}" property="cfgfile" />
+					<dirname file="${installroot}/${app}/@{cfgfilewpath}" property="cfgdir" />
+					<for list="${cfgfile}" delimiter="." param = "ext">
+						<sequential>
+							<var name="ext" unset="true"/>
+							<property name="ext" value="@{ext}" />
+						</sequential>
+					</for>
+					<basename file="${installroot}/${app}/@{cfgfilewpath}" property="cfgfilewoext" suffix="${ext}" />
+					<move file="${cfgdir}/${cfgfilewoext}.${envprofile}.${ext}" tofile="${cfgdir}/${cfgfilewoext}.${ext}" preservelastmodified="true" force="true" overwrite="true" />
+					<echo message="Configuring ${cfgdir}/${cfgfile} completed." />
 				</sequential>
 			</for>
-			<basename file="${installroot}/${app}/@{cfgfilewpath}" property="cfgfilewoext" suffix="${ext}" />
-			<move file="${cfgdir}/${cfgfilewoext}.${envprofile}.${ext}" tofile="${cfgdir}/${cfgfilewoext}.${ext}" preservelastmodified="true" force="true" overwrite="true" />
-			<echo message="Configuring ${cfgdir}/${cfgfile} completed." />
-		</sequential>
+			</sequential>
 		</for>
 	</target>
-		
-	<target name="Install" depends="MachineInfo, ValidateCfgFile, StopAppPool, StopEventService, StopTrustService, BackupCurrInstall, CopyPackage, InstallNewPackage, SetupConfigFiles, StartAppPool, StartTrustService, StartEventService">
+	
+	<target name="Install" depends="MachineInfo, CopyPackage, ValidatePackage, StopAppPool, StopEventService, StopTrustService, BackupCurrInstall, InstallNewPackage, SetupConfigFiles, StartAppPool, StartTrustService, StartEventService">
 		<echo message="Installation Completed for ${package}." />
 		<antcall target="EmailNotification" />
 	</target>
