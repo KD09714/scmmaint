@@ -215,26 +215,35 @@
 						<property name="p-name" value="@{pack}" />
 					</sequential>
 				</for>
+				
+				<for list="${package}" param="pack-temp" >
+					<sequential>
+					<if>
+					<equals arg1="${p-name}" arg2="@{pack-temp}" />
+						<then>
+							<for list="${@{pack-temp}-configtosetup}" delimiter="|" param = "cfgfilewpath">
+								<sequential>
+									<var name="cfgfile" unset="true"/>
+									<var name="cfgdir" unset="true"/>
+									<var name="cfgfilewoext" unset="true"/>
 		
-			<for list="${${p-name}-configtosetup}" delimiter="|" param = "cfgfilewpath">
-				<sequential>
-					<var name="cfgfile" unset="true"/>
-					<var name="cfgdir" unset="true"/>
-					<var name="cfgfilewoext" unset="true"/>
-		
-					<basename file="${installroot}/${app}/@{cfgfilewpath}" property="cfgfile" />
-					<dirname file="${installroot}/${app}/@{cfgfilewpath}" property="cfgdir" />
-					<for list="${cfgfile}" delimiter="." param = "ext">
-						<sequential>
-							<var name="ext" unset="true"/>
-							<property name="ext" value="@{ext}" />
-						</sequential>
+									<basename file="${installroot}/${p-dir}/@{cfgfilewpath}" property="cfgfile" />
+									<dirname file="${installroot}/${p-dir}/@{cfgfilewpath}" property="cfgdir" />
+									<for list="${cfgfile}" delimiter="." param = "ext">
+										<sequential>
+											<var name="ext" unset="true"/>
+											<property name="ext" value="@{ext}" />
+										</sequential>
+									</for>
+									<basename file="${installroot}/${p-dir}/@{cfgfilewpath}" property="cfgfilewoext" suffix="${ext}" />
+									<move file="${cfgdir}/${cfgfilewoext}.${envprofile}.${ext}" tofile="${cfgdir}/${cfgfilewoext}.${ext}" preservelastmodified="true" force="true" overwrite="true" />
+									<echo message="Configuring ${cfgdir}/${cfgfile} completed." />
+								</sequential>
+							</for>
+						</then>
+					</if>
+					</sequential>
 					</for>
-					<basename file="${installroot}/${app}/@{cfgfilewpath}" property="cfgfilewoext" suffix="${ext}" />
-					<move file="${cfgdir}/${cfgfilewoext}.${envprofile}.${ext}" tofile="${cfgdir}/${cfgfilewoext}.${ext}" preservelastmodified="true" force="true" overwrite="true" />
-					<echo message="Configuring ${cfgdir}/${cfgfile} completed." />
-				</sequential>
-			</for>
 			</sequential>
 		</for>
 	</target>
