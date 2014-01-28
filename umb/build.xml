@@ -1,12 +1,13 @@
 <!-- Modification History -->
 
+<!-- Dharmendra Kumar   01/28/2014      Replace roken with password at runtime.          -->
 <!-- Dharmendra Kumar   01/27/2014      Added support to perform installation of multiple packages. -->
 <!-- Dharmendra Kumar   12/16/2013      Do not delete/ recreate installation directory   -->
 <!-- Dharmendra Kumar   12/11/2013      Changed the way it derive cfgfilewoext variable  -->
 <!-- Dharmendra Kumar   12/11/2013      Added target sequence.                           -->
 <!-- Dharmendra Kumar   12/11/2013      Add target to bounce trust & exent services      -->
 <!-- Dharmendra Kumar	11/25/2013	    Initial coding to deploy package for UMB custody -->
-<!-- version 2014.0.1 -->
+<!-- version 2014.0.2 -->
 <project name="DeployOnIIS" basedir=".." default="MachineInfo">
 <taskdef resource="net/sf/antcontrib/antcontrib.properties"/>
 	<tstamp>
@@ -237,6 +238,15 @@
 									</for>
 									<basename file="${installroot}/${p-dir}/@{cfgfilewpath}" property="cfgfilewoext" suffix="${ext}" />
 									<move file="${cfgdir}/${cfgfilewoext}.${envprofile}.${ext}" tofile="${cfgdir}/${cfgfilewoext}.${ext}" preservelastmodified="true" force="true" overwrite="true" />
+		
+									<!-- Password relacement at runtime -->
+                   							<record name="${patchdir}/${timestamp}/log/install.debug-${timestamp-HHmm}.log" loglevel="verbose" action="stop" />
+                               						<replace file="${cfgdir}/${cfgfilewoext}.${ext}">
+                                       						<replacefilter token="@DBTrust@" value="${DBTrust}" />
+                                       						<replacefilter token="@DBEvent@" value="${DBEvent}" />
+                               						</replace>
+                   							<record name="${patchdir}/${timestamp}/log/install.debug-${timestamp-HHmm}.log" loglevel="verbose" action="start" />
+                   
 									<echo message="Configuring ${cfgdir}/${cfgfile} completed." />
 								</sequential>
 							</for>
