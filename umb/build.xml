@@ -1,6 +1,7 @@
 <!-- Modification History -->
 
-<!-- Dharmendra Kumar   01/28/2014      Replace roken with password at runtime.          -->
+<!-- Dharmendra Kumar   01/28/2014      Replace roken with password at runtime.          
+					Handle multiple installroot directory            -->
 <!-- Dharmendra Kumar   01/27/2014      Added support to perform installation of multiple packages. -->
 <!-- Dharmendra Kumar   12/16/2013      Do not delete/ recreate installation directory   -->
 <!-- Dharmendra Kumar   12/11/2013      Changed the way it derive cfgfilewoext variable  -->
@@ -143,6 +144,19 @@
 						<property name="p-name" value="@{pack}" />
 					</sequential>
 				</for>
+				
+				<for list="${package}" param="p" >
+					<sequential>
+						<if>
+						<equals arg1="@{p}" arg2="${p-name}" />
+							<then>
+								<var name="installroot" unset="true" />
+								<property name="installroot" value="${@{p}-installroot}" />
+							</then>
+						</if>
+					</sequential>
+				</for>
+						
 				<if>
 				<available file="${patchdir}/${timestamp}/new/${p-name}.zip" />
 					<then>
@@ -188,7 +202,19 @@
 						<property name="p-name" value="@{pack}" />
 					</sequential>
 				</for>
-				
+
+				<for list="${package}" param="p" >
+					<sequential>
+						<if>
+						<equals arg1="@{p}" arg2="${p-name}" />
+							<then>
+								<var name="installroot" unset="true" />
+								<property name="installroot" value="${@{p}-installroot}" />
+							</then>
+						</if>
+					</sequential>
+				</for>
+						
 				<if>
 				<available file="${patchdir}/${timestamp}/new/${p-name}.zip" />
 					<then>
@@ -217,6 +243,18 @@
 					</sequential>
 				</for>
 				
+				<for list="${package}" param="p" >
+					<sequential>
+						<if>
+						<equals arg1="@{p}" arg2="${p-name}" />
+							<then>
+								<var name="installroot" unset="true" />
+								<property name="installroot" value="${@{p}-installroot}" />
+							</then>
+						</if>
+					</sequential>
+				</for>
+				
 				<for list="${package}" param="pack-temp" >
 					<sequential>
 					<if>
@@ -227,7 +265,7 @@
 									<var name="cfgfile" unset="true"/>
 									<var name="cfgdir" unset="true"/>
 									<var name="cfgfilewoext" unset="true"/>
-		
+									
 									<basename file="${installroot}/${p-dir}/@{cfgfilewpath}" property="cfgfile" />
 									<dirname file="${installroot}/${p-dir}/@{cfgfilewpath}" property="cfgdir" />
 									<for list="${cfgfile}" delimiter="." param = "ext">
