@@ -160,6 +160,7 @@
 	<target name="SetupConfigFiles">
 		<for list="${virtualdir}" delimiter=";" param="vdir">
 			<sequential>
+				<var name="envprofile" unset="true"/>
 				<for list="${@{vdir}-configtosetup}" delimiter="|" param = "profile-cfgfilewpath">
 					<sequential>
 						<property name="envprofile" value="@{profile-cfgfilewpath}" />
