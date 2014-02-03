@@ -113,10 +113,22 @@
 		</for>
 	</target>
 	
-	<target name="Install" depends="MachineInfo, VerifyPackage, StopAppPool, BackupCurrInstall, InstallNewPackage, SetupConfigFiles, StartAppPool">
+	<target name="Install" depends="MachineInfo, CopyPackage, VerifyPackage, StopAppPool, BackupCurrInstall, InstallNewPackage, SetupConfigFiles, StartAppPool">
 		<echo message="Installation Completed for ${package}." />
-		<antcall target="EmailNotification" />
+		
+		<!-- Zip the backup package -->
+		<move file="${patchdir}/${timestamp}/backup/${app}" tofile="${patchdir}/${timestamp}/backup/${package}" />
+		<zip destfile="${patchdir}/${timestamp}/backup/${package}.zip" >
+			<fileset dir="${patchdir}/${timestamp}/backup/" >
+				<include name="${package}/**" />
+			</fileset>
+		</zip>
+		<delete dir="${patchdir}/${timestamp}/backup/${package}" />
+		<echo message="lastbackupdate=${timestamp}" file="cfg/lastinstall.cfg" force="true" />
+		
 		<record name="${patchdir}/${timestamp}/log/install.debug-${timestamp-HHmm}.log" loglevel="verbose" action="stop" />
+		<antcall target="EmailNotification" />
+		
 	</target>
 	
 	<target name="EmailNotification" if="emailsmtpserver">
