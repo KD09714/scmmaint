@@ -1,0 +1,323 @@
+<!-- Modification History -->
+
+<!-- 01/31/2014   Dharmendra Kumar    Initial Coding to deploy WebSphere Application.           -->
+
+<project name="DeployOnWebsphere" default="MachineInfo" basedir=".."> 
+<taskdef resource="net/sf/antcontrib/antcontrib.properties"/>
+<property name="scriptversion" value="2014.0.1" />
+
+<tstamp>
+        <format property="timestamp" pattern="yyyyMMdd"/>
+        <format property="timestamp-HHmm" pattern="yyyyMMdd-HHmm"/>
+</tstamp>
+
+<property file="cfg/deploy.cfg"/>
+<property name="was.cp" value="${toString:was.runtime}" />
+<property environment="env" />
+<mkdir dir="${patchdir}/${timestamp}/log" />
+<record name="${patchdir}/${timestamp}/log/install-${timestamp-HHmm}.log" />
+<record name="${patchdir}/${timestamp}/log/install.debug-${timestamp-HHmm}.log" loglevel="verbose" />
+
+<path id="was.runtime">
+<fileset dir="${wshome}/lib">
+    <include name="**/*.jar" />
+</fileset>
+<fileset dir="${wshome}/plugins">
+    <include name="**/*.jar" />
+</fileset>
+</path>
+
+<path id="infinity.tools.console.path">
+<fileset dir="/tools/system/was/ssb-client/lib">
+	<include name="**/*.jar" />
+</fileset>
+</path>
+
+<target name="MachineInfo"> 
+	<echo message="VERSION : ${scriptversion}" />
+	<echo message="USER : ${env.LOGNAME}" />
+	<echo message="TIMESTAMP : ${timestamp-HHmm}" />
+</target>    
+
+<target name="VerifyUser">
+	<if>
+	<equals arg1="${env.LOGNAME}" arg2="root" />
+		<else>
+			<echo message="You must login as root to run the script..!!" />
+		</else>
+	</if>
+</target>
+
+<target name="CopyPackage" if="packagesource">
+	<copy todir="${patchdir}/${timestamp}/new" overwrite="true">
+		<fileset dir="${packagesource}" >
+			<include name="*.war" />
+		</fileset>
+	</copy>
+</target>
+
+<target name="VerifyPackage">
+	<if>
+	<available file="${patchdir}/${timestamp}/new/${war.filename}" />
+		<then>
+			<property name="war.file.exists" value="true" />
+			<echo message="${war.filename} Exists for Installation....!!" />
+		</then>
+	</if>
+	<if>
+	<available file="${patchdir}/${timestamp}/new/${model.filename}" />
+                <then>
+			<property name="model.file.exists" value="true" />
+                        <echo message="${model.filename} Exists for Installation....!!" />
+                </then>
+	</if>
+	<if>
+	<equals arg1="${war.file.exists}" arg2="true" />
+		<then>
+			<if>
+			<equals arg1="${model.file.exists}" arg2="true" />
+				<then>
+					<property name="file.list" value="${war.filename},${model.filename}" />
+				</then>
+				<else>
+					<property name="file.list" value="${war.filename}" />
+				</else>
+			</if>
+		</then>
+		<else>
+			<if>
+			<equals arg1="${model.file.exists}" arg2="true" />
+				<then>
+					<property name="file.list" value="${model.filename}" />
+				</then>
+				<else>
+					<fail message="No file exists for installation ....!!" />
+				</else>
+			</if>
+		</else>	
+	</if>
+</target>
+  
+<target name="StopApplication" if="war.file.exists"> 
+<taskdef name="wsStopApps" classname="com.ibm.websphere.ant.tasks.StopApplication" classpath="${was.cp}" />
+    <wsStopApps
+        user="${wsadminuser}"
+	password="${wsadminpwd}"
+        conntype="SOAP"
+        application="${applicationname}"
+        server="${servername}"
+        host="${applicationhost}"
+        port="${serversoapport}"
+        failonerror="true"
+        wasHome="${wshome}" 
+    />
+</target>
+
+<target name="StartApplication" if="war.file.exists">
+<taskdef name="wsStartApps" classname="com.ibm.websphere.ant.tasks.StartApplication" classpath="${was.cp}" />
+    <wsStartApps
+        user="${wsadminuser}"
+        password="${wsadminpwd}"
+        conntype="SOAP"
+        application="${applicationname}"
+        server="${servername}"
+        host="${applicationhost}"
+        port="${serversoapport}"
+        failonerror="true"
+        wasHome="${wshome}"
+    />
+</target>
+
+<target name="RestartApplication" depends="StopApplication, StartApplication">
+	<echo message="Restart completed." />
+</target>
+
+<target name="ListApplication">
+<taskdef name="wsListApps" classname="com.ibm.websphere.ant.tasks.ListApplications" classpath="${was.cp}" />
+    <wsListApps
+	user="${wsadminuser}"
+	password="${wsadminpwd}"
+	wasHome="${wshome}"
+	failonerror="true"
+	conntype="SOAP"
+	port="${dmsoapport}"
+    />
+</target>
+
+<target name="InstallApplication" if="war.file.exists">
+<taskdef name="wsInstallApp" classname="com.ibm.websphere.ant.tasks.InstallApplication" classpath="${was.cp}" />
+    <wsInstallApp
+	user="${wsadminuser}"
+	password="${wsadminpwd}"
+	ear="${patchdir}/${timestamp}/new/${war.filename}"
+	conntype="SOAP"
+	host="${applicationhost}"
+	port="${dmsoapport}"
+	failonerror="true"
+   	options="-usedefaultbindings -preCompileJSPs -node ${servernode} -server ${servername} -contextroot ao-ipp -appname ${applicationname}"   
+/>
+</target>
+
+<target name="UninstallApplication" if="war.file.exists">
+<taskdef name="wsUninstallApp" classname="com.ibm.websphere.ant.tasks.UninstallApplication" classpath="${was.cp}" />
+    <wsUninstallApp
+        user="${wsadminuser}"
+        password="${wsadminpwd}"
+	application="${applicationname}"
+        conntype="SOAP"
+        host="${applicationhost}"
+        port="${dmsoapport}"
+        failonerror="true"
+    />
+</target>
+
+<target name="StopServer">
+<taskdef name="wsStopServer" classname="com.ibm.websphere.ant.tasks.StopServer" classpath="${was.cp}" />
+   <wsStopServer
+	server="${servername}"
+	conntype="SOAP"
+	port="${serversoapport}"
+	username="${wsadminuser}"
+	password="${wsadminpwd}"
+	wasHome="${wshome}"
+	failonerror="true"
+   />
+</target>
+
+<target name="StartServer">
+<taskdef name="wsStartServer" classname="com.ibm.websphere.ant.tasks.StartServer" classpath="${was.cp}" />
+   <wsStartServer
+        server="${servername}"
+	profileName="${profilename}"
+        username="${wsadminuser}"
+        password="${wsadminpwd}"
+        wasHome="${wshome}"
+        failonerror="true"
+   />
+</target>
+
+<target name="RestartServer" depends="StopServer, StartServer">
+	<echo message="Restart of ${servername} completesd..!!" />
+</target>
+
+<target name="SaveConfig" if="war.file.exists">
+<taskdef name="wsAdmin" classname="com.ibm.websphere.ant.tasks.WsAdmin" classpath="${was.cp}" />
+   <wsAdmin
+	wasHome="${wshome}"
+	command="$AdminConfig save"
+	conntype="SOAP"
+	host="${applicationhost}"
+	port="${dmsoapport}"
+	user="${wsadminuser}"
+	password="${wsadminpwd}"
+	jvmMaxMemory="256M"
+	failonerror="true"
+   />
+</target>
+
+<target name="CreateConfScript" if="war.file.exists">
+	<copy file="tools/config.jython" tofile="tools/config.script" overwrite="true" />
+	<replace file="tools/config.script">
+        	<replacefilter token="@applicationname@" value="${applicationname}" />
+        </replace>
+</target>
+
+<target name="CreateSyncScript" if="war.file.exists">
+        <copy file="tools/sync.jython" tofile="tools/sync.script" overwrite="true" />
+        <replace file="tools/sync.script">
+                <replacefilter token="@applicationname@" value="${applicationname}" />
+        </replace>
+</target>
+
+<target name="UpdateApplConfig" depends="CreateConfScript" if="war.file.exists">
+<taskdef name="wsAdmin" classname="com.ibm.websphere.ant.tasks.WsAdmin" classpath="${was.cp}" />
+   <wsAdmin
+        wasHome="${wshome}"
+        script="tools/config.script"
+	lang="jython"
+	conntype="SOAP"
+        host="${applicationhost}"
+        port="${dmsoapport}"
+        user="${wsadminuser}"
+        password="${wsadminpwd}"
+        jvmMaxMemory="256M"
+        failonerror="true"
+   />
+</target>
+
+<target name="ConfirmSync" depends="CreateSyncScript" if="war.file.exists">
+<taskdef name="wsAdmin" classname="com.ibm.websphere.ant.tasks.WsAdmin" classpath="${was.cp}" />
+   <wsAdmin
+        wasHome="${wshome}"
+        script="tools/sync.script"
+        lang="jython"
+        conntype="SOAP"
+        host="${applicationhost}"
+        port="${dmsoapport}"
+        user="${wsadminuser}"
+        password="${wsadminpwd}"
+        jvmMaxMemory="256M"
+        failonerror="true"
+   />
+</target>
+
+<target name="EmailNotification" if="emailuser">
+	<property name="subject" value="Installation of ${file.list} completed on ${applicationhost}" />
+	<for list="${emailuser}" param="user">
+		<sequential>
+			<echo message="Sending installation log to @{user}" />
+			<exec executable="sh" failonerror="true">
+				<arg value="mail -s &quot;${subject}&quot; @{user} &lt;${patchdir}/${timestamp}/log/install-${timestamp-HHmm}.log" />
+			</exec>
+		</sequential>
+	</for>
+</target>
+
+<target name="DeployWar" depends="VerifyUser, CopyPackage, VerifyPackage, StopApplication, StopServer, UninstallApplication, InstallApplication, SaveConfig, UpdateApplConfig, StartServer, ConfirmSync, StartApplication" if="war.file.exists">
+	<echo message="Installation of ${war.filename} to ${applicationhost} completed." />
+</target>
+
+<target name="Install" depends="MachineInfo, DeployWar">
+        <antcall target="DeployModel" />
+	<antcall target="CleanupPackage" />
+	<antcall target="EmailNotification" />
+</target>
+
+<target name="Download">
+	<echo message="Connecting to ftp server ${ftphost} :" />
+	<input message="Enter ftp userid [Ex. codemove]?" addproperty="ftpuser" />
+	<input message="Enter password for ${ftpuser}?" addproperty="ftppassword" />
+	<input message="Enter ftp path for package [ relative to ${ftpuser} home directory ]?" addproperty="ftppath" />
+	<ftp action="get" verbose="yes"
+		server="${ftphost}"
+		userid="${ftpuser}"
+		password="${ftppassword}"
+		remotedir="${ftppath}">
+		<fileset dir="${patchdir}/${timestamp}/new">
+			<include name="*" />
+		</fileset>
+	</ftp>
+</target>
+
+<target name="DeployModel" depends="VerifyUser, CopyPackage, VerifyPackage" if="model.file.exists">
+	<if>
+	<available file="${modeldeploybase}/deploy/${model.filename}" />
+		<then>
+			<move file="${modeldeploybase}/deploy/${model.filename}" tofile="${modeldeploybase}/deploy/${model.filename}.${timestamp-HHmm}" />
+		</then>
+	</if>
+	<copy file="${patchdir}/${timestamp}/new/${model.filename}" todir="${modeldeploybase}/deploy" />
+	<ant dir="${modeldeploybase}" target="infinity-deploy-model" />
+	<echo message="Installation of ${model.filename} to ${applicationhost} completed." />
+	<move file="${modeldeploybase}/deploy/${model.filename}" tofile="${modeldeploybase}/deploy/${model.filename}.${timestamp-HHmm}" />
+	<antcall target="RestartServer" />
+</target>
+
+<target name="CleanupPackage" if="cleanpackage">
+	<for list="${file.list}" param="filetodelete">
+		<sequential>
+			<delete file="${patchdir}/${timestamp}/new/@{filetodelete}" />
+		</sequential>
+	</for>
+</target>
+</project> 
