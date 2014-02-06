@@ -1,0 +1,10 @@
+app = AdminApp.isAppReady("@applicationname@")
+print "Application sync status"
+print app
+while (app == "false"):
+   print "Waiting for application to sync..!!"
+   sleep(30)
+   app = AdminApp.isAppReady("@applicationname@")
+   print "Application sync status"
+   print app
+print app
