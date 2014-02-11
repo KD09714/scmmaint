@@ -299,7 +299,7 @@
 	</ftp>
 </target>
 
-<target name="DeployModel" depends="VerifyUser, CopyPackage, VerifyPackage" if="model.file.exists">
+<target name="DeployModel" if="model.file.exists">
 	<if>
 	<available file="${modeldeploybase}/deploy/${model.filename}" />
 		<then>
