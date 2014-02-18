@@ -1,7 +1,8 @@
 <!-- Modification History -->
 
+<!-- Dharmendra Kumar   02/18/2014      Add RestartService target -->
 <!-- Dharmendra Kumar	01/20/2014	Initial coding to deploy dotnet package for BBH -->
-<!-- version 2014.0.1 -->
+<!-- version 2014.0.2 -->
 <project name="DeployOnIIS" basedir=".." default="MachineInfo">
 <taskdef resource="net/sf/antcontrib/antcontrib.properties"/>
 	<tstamp>
@@ -65,7 +66,7 @@
 		<sleep seconds="10"/>
 	</target>
 	
-	<target name="RestartEventService" depends="StopEventService, StartEventService" if="eventservicename">
+	<target name="RestartService" depends="StopService, StartService" if="servicename">
 		<echo message="Restart Completed ..!" />
 	</target>
 	
