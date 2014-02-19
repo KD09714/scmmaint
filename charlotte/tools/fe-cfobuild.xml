@@ -1,5 +1,6 @@
 <!-- Change History-->
 
+<!-- 02/19/2014   Dharmendra Kumar     Changes the logic of getting updated files.               -->
 <!-- 12/04/2013   Dharmendra Kumar     Remove few dll from full build packaging.                 -->
 <!-- 10/29/2013   Dharmendra Kumar     timenow variable should be populated at start of script   -->
 <!-- 10/29/2013   Dharmendra Kumar     Delete the workspace before doing fresh checkout          -->  
@@ -13,7 +14,7 @@
 <!-- 06/24/2013   Dharmendra Kumar     Added support to do full package if fullpackage variable  -->
 <!--                                   is set to Y in config file.                               -->
 <!-- 06/06/2013   Dharmendra Kumar     Initial Coding to Automate Charllote FE Build & Packaging -->
-<!-- rev=2013.1.10-->
+<!-- rev=2014.1.11-->
 
 <project name="cltfebuild" default="vsshistory" basedir="..">
 <taskdef resource="net/sf/antcontrib/antcontrib.properties"/>
@@ -64,6 +65,16 @@
 				writable="true"
 		/>
 	</target>
+	
+	<target name="vssget-tmp">
+		<vssget localPath="${workdir}-tmp"
+				vsspath="${vssdir}"
+				serverPath="${ssdir}"
+				filetimestamp="updated"
+				recursive="true"
+				writable="true"
+		/>
+	</target>
 
 	<target name="febuild">
 		<exec executable="cmd" failonerror="true">
@@ -74,7 +85,7 @@
 	</target>
 	
 	<target name="getupdatedfiles">
-		<fileset id="file.list" dir="${workdir}" includes="**/*" excludes="**/*.sln,**/*.sln.cache">
+		<fileset id="file.list" dir="${workdir}-tmp" includes="**/*" excludes="**/*.sln,**/*.sln.cache">
 			<date datetime="${lastpackagetime}" when="after"/>
 		</fileset>
 
@@ -87,6 +98,7 @@
 				<echo message="@{filewithpath}" />
 			</sequential>
 		</for>
+		<delete dir="${workdir}-tmp" />
 	</target>
 	
 	<target name="createpackage" depends="getupdatedfiles" >
