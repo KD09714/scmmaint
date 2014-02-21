@@ -14,7 +14,7 @@
 <!-- 06/24/2013   Dharmendra Kumar     Added support to do full package if fullpackage variable  -->
 <!--                                   is set to Y in config file.                               -->
 <!-- 06/06/2013   Dharmendra Kumar     Initial Coding to Automate Charllote FE Build & Packaging -->
-<!-- rev=2014.1.12-->
+<!-- rev=2014.1.13-->
 
 <project name="cltfebuild" default="vsshistory" basedir="..">
 <taskdef resource="net/sf/antcontrib/antcontrib.properties"/>
@@ -261,7 +261,7 @@
 	</target>
 	
 	<!-- target to run daily test build & check the failure if any-->
-	<target name="testpatch" depends="prebuild, vssget, febuild, getupdatedfiles, createpackage">
+	<target name="testpatch" depends="prebuild, vssget, vssget-tmp, febuild, getupdatedfiles, createpackage">
 		<delete file="${archievedir}/${rel}/fe-clt.zip" />
 		<zip destfile="${archievedir}/${rel}/fe-clt.zip" basedir="${targetdir}/FE" />
 		<echo message="lastpackagetime=${timenow}" file="cfg/fe-lastpackage-${rel}.cfg" force="true" />
