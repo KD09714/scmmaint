@@ -1,5 +1,6 @@
 <!-- Change History-->
 
+<!-- 03/13/2014     Dharmendra Kumar  Archiving freeze zips tp ${cibase}/freezecopy                 -->
 <!-- 08/06/2013     Dharmendra Kumar  Added support to exclude files during zip.                    -->
 <!-- 07/20/2013     Dharmendra Kumar  Added Support to package up Web Project.                      -->
 <!-- 07/12/2013     Dharmendra Kumar  Soft coded the cibase variable                                -->
@@ -9,7 +10,7 @@
 <!-- 03/20/2013     Dharmendra Kumar  Added code to display freeze number during distribution.  -->
 <!-- 03/19/2013     Dharmendra Kumar  Added support to refresh build area with last freeze zip. -->
 <!-- 02/15/2013		Dharmendra Kumar  Initial Coding to Support backup of prod area.            -->
-<!-- rev=2013.0.8-->
+<!-- rev=2013.0.9-->
 
 <project name="ZipProject" default="ZipProject" basedir="..">
 	<taskdef resource="net/sf/antcontrib/antcontrib.properties"/>
@@ -27,7 +28,7 @@
 		<!--delete>
 			<fileset dir="${cibase}/workspace/Zip-${project}" includes="*.zip" />
 		</delete-->
-		<if>
+	<!--	<if>
         <available file="${cibase}/workspace/Freeze-${freezeproject}" type="dir" />
             <then>
 				<move todir="${cibase}/backup">
@@ -35,7 +36,7 @@
 						<include name="*.zip" />
 					</fileset>
 				</move>
-            </then>
+            </then> -->
         </if>
 
 		<if>
@@ -102,12 +103,13 @@
 			<then>
 				<move file="C:/scm/gopatch/patch.cfg" tofile="C:/scm/gopatch/patch.cfg.${basefreeze}"/>
 				<echo message="Distributing ${basefreeze} freeze for ${project} .. " />
-				<unzip src="${cibase}/jobs/Freeze-${freezeproject}/workspace/${project}-${artifact.id}-${basefreeze}.zip" dest="${cibase}/workspace/${freezeproject}" />
+				<unzip src="${cibase}/freezecopy/${project}-${artifact.id}-${basefreeze}.zip" dest="${cibase}/workspace/${freezeproject}" />
 				<antcall target="CopyPatchFiles" />
 			</then>
 			<else>
 				<echo message="Distributing ${freeze} freeze for ${project} .. " />
 				<unzip src="${cibase}/jobs/Freeze-${freezeproject}/workspace/${project}-${artifact.id}.zip" dest="${cibase}/workspace/${freezeproject}"/>
+				<move file="${cibase}/jobs/Freeze-${freezeproject}/workspace/${project}-${artifact.id}.zip" todir="${cibase}/freezecopy" />
 				<echo message="freeze=${freeze}" file="${cibase}/workspace/${freezeproject}/freeze.cfg" force="true" />
 				<echo message="basefreeze=${freeze}" file="C:/scm/gopatch/patch.cfg.${freeze}" force="true" />
 			</else>
