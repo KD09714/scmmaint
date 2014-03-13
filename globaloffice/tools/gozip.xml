@@ -10,7 +10,7 @@
 <!-- 03/20/2013     Dharmendra Kumar  Added code to display freeze number during distribution.  -->
 <!-- 03/19/2013     Dharmendra Kumar  Added support to refresh build area with last freeze zip. -->
 <!-- 02/15/2013		Dharmendra Kumar  Initial Coding to Support backup of prod area.            -->
-<!-- rev=2013.0.10-->
+<!-- rev=2013.0.11-->
 
 <project name="ZipProject" default="ZipProject" basedir="..">
 	<taskdef resource="net/sf/antcontrib/antcontrib.properties"/>
@@ -64,8 +64,14 @@
 	</condition>
 
 	<target name="DistributeFreeze">
-        <path id="artifact.id.path">
+		<move todir="${cibase}/freezecopy" >
 			<fileset dir="${cibase}/jobs/Freeze-${freezeproject}/workspace">
+				<include name="*.zip" />
+			</fileset>
+		</move>
+		
+        <path id="artifact.id.path">
+			<fileset dir="${cibase}/freezecopy">
 				<include name="${project}-*.zip"/>
             </fileset>
         </path>
@@ -108,8 +114,7 @@
 			</then>
 			<else>
 				<echo message="Distributing ${freeze} freeze for ${project} .. " />
-				<unzip src="${cibase}/jobs/Freeze-${freezeproject}/workspace/${project}-${artifact.id}.zip" dest="${cibase}/workspace/${freezeproject}"/>
-				<move file="${cibase}/jobs/Freeze-${freezeproject}/workspace/${project}-${artifact.id}.zip" todir="${cibase}/freezecopy" />
+				<unzip src="${cibase}/freezecopy/${project}-${artifact.id}.zip" dest="${cibase}/workspace/${freezeproject}"/>
 				<echo message="freeze=${freeze}" file="${cibase}/workspace/${freezeproject}/freeze.cfg" force="true" />
 				<echo message="basefreeze=${freeze}" file="C:/scm/gopatch/patch.cfg.${freeze}" force="true" />
 			</else>
