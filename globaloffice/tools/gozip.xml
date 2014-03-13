@@ -10,7 +10,7 @@
 <!-- 03/20/2013     Dharmendra Kumar  Added code to display freeze number during distribution.  -->
 <!-- 03/19/2013     Dharmendra Kumar  Added support to refresh build area with last freeze zip. -->
 <!-- 02/15/2013		Dharmendra Kumar  Initial Coding to Support backup of prod area.            -->
-<!-- rev=2013.0.9-->
+<!-- rev=2013.0.10-->
 
 <project name="ZipProject" default="ZipProject" basedir="..">
 	<taskdef resource="net/sf/antcontrib/antcontrib.properties"/>
@@ -28,15 +28,15 @@
 		<!--delete>
 			<fileset dir="${cibase}/workspace/Zip-${project}" includes="*.zip" />
 		</delete-->
-	<!--	<if>
+	<if>
         <available file="${cibase}/workspace/Freeze-${freezeproject}" type="dir" />
             <then>
-				<move todir="${cibase}/backup">
+				<delete>
 					<fileset dir="${cibase}/workspace/Freeze-${freezeproject}">
 						<include name="*.zip" />
 					</fileset>
-				</move>
-            </then> -->
+				</delete>
+           </then>
         </if>
 
 		<if>
