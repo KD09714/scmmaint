@@ -116,6 +116,7 @@
 		<copy todir="${qadelivery}/UpGrade" preservelastmodified="true" overwrite="true" force="true" >
 			<fileset dir="${targetdir}/UpGrade" />
 		</copy>
+		<copy file="${targetdir}/HardCode${rel}.zip" todir="${qadelivery}"  preservelastmodified="true" overwrite="true" force="true" />
 		
 		<delete file="${archievedir}/${rel}/hc-clt.zip" />
 		<zip destfile="${archievedir}/${rel}/hc-clt.zip" basedir="${qadelivery}/UpGrade" />
