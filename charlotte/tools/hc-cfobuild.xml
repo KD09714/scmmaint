@@ -1,12 +1,13 @@
 <!-- Change History-->
 
+<!-- 03/24/2014   Dharmendra Kumar     Added QADelivery Area.                              -->
 <!-- 01/20/2014   Dharmendra Kumar     Copy table list to metanew before running build.    -->
 <!-- 12/04/2013   Dharmendra Kumar     Rename HardCode.zip to append release in name.      -->
 <!-- 08/01/2013   Dharmendra Kumar     Added testpatch target to run daily test builds.    -->
 <!-- 07/24/2013   Dharmendra Kumar     Added support to zip the hardcode.                  -->
 <!-- 06/27/2013   Dharmendra Kumar     Added support to hardcode build using bat file      -->
 <!-- 06/12/2012   Dharmendra Kumar     Initial Coding to Automate Charlotte Hardcode build -->
-<!-- rev=2014.0.1-->
+<!-- rev=2014.0.2-->
 
 <project name="clthcbuild" default="vsshistory" basedir="..">
 <taskdef resource="net/sf/antcontrib/antcontrib.properties"/>
@@ -30,6 +31,7 @@
 
 	<target name="prebuild">
 		<property name="targetdir" value="${workdir}/Releases/clt${timestamp}" />
+		<property name="qadelivery" value="${patchdir}/Releases/QADelivery" />
 		<if>
 			<available file="${targetdir}/UpGrade" type="dir"/>
 			<then>
@@ -110,8 +112,13 @@
 		</else>
 		</if>
 		<move file="${targetdir}/HardCode.zip" tofile="${targetdir}/HardCode${rel}.zip" />
+		
+		<copy todir="${qadelivery}/UpGrade" preservelastmodified="true" overwrite="true" force="true" >
+			<fileset dir="${targetdir}/UpGrade" />
+		</copy>
+		
 		<delete file="${archievedir}/${rel}/hc-clt.zip" />
-		<zip destfile="${archievedir}/${rel}/hc-clt.zip" basedir="${targetdir}/UpGrade" />
+		<zip destfile="${archievedir}/${rel}/hc-clt.zip" basedir="${qadelivery}/UpGrade" />
 	</target>
 	
 	<target name="testpatch" depends="prebuild, vssget-upgrade, update-hardcode-config, hardcode-build" >
@@ -124,7 +131,12 @@
 			<zip destfile="${targetdir}/HardCode.zip" basedir="${targetdir}" includes="HardCode.ATD" />		
 		</else>
 		</if>
+		
+		<copy todir="${qadelivery}/UpGrade" preservelastmodified="true" overwrite="true" force="true">
+			<fileset dir="${targetdir}/UpGrade" />
+		</copy>
+		
 		<delete file="${archievedir}/${rel}/hc-clt.zip" />
-		<zip destfile="${archievedir}/${rel}/hc-clt.zip" basedir="${targetdir}/UpGrade" />
+		<zip destfile="${archievedir}/${rel}/hc-clt.zip" basedir="${qadelivery}/UpGrade" />
 	</target>
 </project>
