@@ -148,7 +148,7 @@
 				<exclude name="bin/PresentationCore.dll" />
 			</fileset>
 		</copy>
-		<copy todir="${qadelivery}/FE" preservelastmodified="true">
+		<copy todir="${qadelivery}/FE" preservelastmodified="true" overwrite="true" force="true" >
 			<fileset dir="${targetdir}/FE" />
 		</copy>
 	</target>
@@ -257,7 +257,7 @@
 				</if>
 			</sequential>
 		</for>
-		<copy todir="${qadelivery}/FE" preservelastmodified="true">
+		<copy todir="${qadelivery}/FE" preservelastmodified="true" overwrite="true" force="true" >
 			<fileset dir="${targetdir}/FE" />
 		</copy>
 	</target>
