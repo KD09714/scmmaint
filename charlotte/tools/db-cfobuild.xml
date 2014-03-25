@@ -1,11 +1,12 @@
 <!-- Change History-->
 
+<!-- 03/24/2014     Dharmendra Kumar        Added QADelivery.                              -->
 <!-- 12/03/2013     Dharmendra Kumar        Renaming Scripts directory during rebuild      -->
 <!-- 08/01/2013     Dharmendra Kumar        Added testpatch target to run daily test builds-->
 <!-- 07/12/2013     Dharmendra Kumar        Added comment to the target vsscheckin         -->
 <!-- 06/27/2013     Dharmendra Kumar        Added target show-updated-sql to show the list -->
 <!-- 06/07/2013     Dharmendra Kumar        Initial Coding to Automate Charllote DB build  -->
-<!-- rev=2013.1.4-->
+<!-- rev=2013.1.5-->
 
 <project name="cltdbbuild" default="vsshistory" basedir="..">
 <taskdef resource="net/sf/antcontrib/antcontrib.properties"/>
@@ -33,6 +34,7 @@
 
 	<target name="prebuild">
 		<property name="targetdir" value="${workdir}/Releases/clt${timestamp}" />
+		<property name="qadelivery" value="${workdir}/Releases/QADelivery" />
 		<if>
 			<available file="${targetdir}/SQL" type="dir"/>
 			<then>
@@ -155,6 +157,10 @@
 		<delete>
 			<fileset dir="${targetdir}/SQL" defaultexcludes="no" includes="**/*.scc" />
 		</delete>
+		
+		<copy todir="${qadelivery}/SQL" preservelastmodified="true">
+			<fileset dir="${targetdir}/SQL" />
+		</copy>
 	</target>
 	
 	<target name="show-updated-sql">
@@ -174,13 +180,13 @@
 	
 	<target name="wrapuppatch" depends="prebuild, vsscheckout-scripts, vssget-scripts-compile, vssget-stp, dbbuild, vsscheckin-scripts, get-updated-sql, show-updated-sql">
 		<delete file="${archievedir}/${rel}/db-clt.zip" />
-		<zip destfile="${archievedir}/${rel}/db-clt.zip" basedir="${targetdir}/SQL" />
+		<zip destfile="${archievedir}/${rel}/db-clt.zip" basedir="${qadelivery}/SQL" />
 		<echo message="lastpackagetime=${buildtime}" file="cfg/db-lastpackage-${rel}.cfg" force="true" />
 	</target>
 	
 	<target name="testpatch" depends="prebuild, vssget-scripts, vssget-scripts-compile, vssget-stp, dbbuild, copy-updated-sql, show-updated-sql">
 		<delete file="${archievedir}/${rel}/db-clt.zip" />
-		<zip destfile="${archievedir}/${rel}/db-clt.zip" basedir="${targetdir}/SQL" />
+		<zip destfile="${archievedir}/${rel}/db-clt.zip" basedir="${qadelivery}/SQL" />
 		<echo message="lastpackagetime=${buildtime}" file="cfg/db-lastpackage-${rel}.cfg" force="true" />
 	</target>
 </project>
