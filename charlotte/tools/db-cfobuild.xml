@@ -157,10 +157,6 @@
 		<delete>
 			<fileset dir="${targetdir}/SQL" defaultexcludes="no" includes="**/*.scc" />
 		</delete>
-		
-		<copy todir="${qadelivery}/SQL" preservelastmodified="true" overwrite="true" force="true" >
-			<fileset dir="${targetdir}/SQL" />
-		</copy>
 	</target>
 	
 	<target name="show-updated-sql">
@@ -176,6 +172,9 @@
 				<echo message="@{filewithpath}" />
 			</sequential>
 		</for>
+		<copy todir="${qadelivery}/SQL" preservelastmodified="true" overwrite="true" force="true" >
+			<fileset dir="${targetdir}/SQL" />
+		</copy>
 	</target>
 	
 	<target name="wrapuppatch" depends="prebuild, vsscheckout-scripts, vssget-scripts-compile, vssget-stp, dbbuild, vsscheckin-scripts, get-updated-sql, show-updated-sql">
