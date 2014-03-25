@@ -158,7 +158,7 @@
 			<fileset dir="${targetdir}/SQL" defaultexcludes="no" includes="**/*.scc" />
 		</delete>
 		
-		<copy todir="${qadelivery}/SQL" preservelastmodified="true">
+		<copy todir="${qadelivery}/SQL" preservelastmodified="true" overwrite="true" force="true" >
 			<fileset dir="${targetdir}/SQL" />
 		</copy>
 	</target>
