@@ -1,8 +1,9 @@
 <!-- Change History-->
 
+<!-- 03/24/2014   Dharmendra Kumar     Accomodate QADelivery area.                     -->
 <!-- 07/26/2013   Dharmendra Kumar     Force exclude Thumbs.db from copy deliverables. -->
 <!-- 07/16/2013   Dharmendra Kumar     Initial Coding to Automate copy of CFO Delivery -->
-<!-- rev=2013.1.1-->
+<!-- rev=2014.0.2-->
 
 <project name="cforelease" default="copydeliverables" basedir="..">
 <taskdef resource="net/sf/antcontrib/antcontrib.properties"/>
@@ -16,10 +17,11 @@
 	
 	<target name="prebuild">
 		<property name="targetdir" value="${sourcebase}/Releases/clt${timestamp}" />
+		<property name="qadelivery" value="${sourcebase}/Releases/QADelivery" />
 		<if>
-			<available file="${targetdir}/FE" type="dir"/>
+			<available file="${qadelivery}/FE" type="dir"/>
 			<then>
-				<echo message="FE Package exists at ${targetdir}/FE" />
+				<echo message="FE Package exists at ${qadelivery}/FE" />
 				<property name="fedelivery" value="Y" />
 			</then>
 			<else>
@@ -28,9 +30,9 @@
 		</if>
 		
 		<if>
-			<available file="${targetdir}/UpGrade" type="dir"/>
+			<available file="${qadelivery}/UpGrade" type="dir"/>
 			<then>
-				<echo message="HardCode Package exists at ${targetdir}/UpGrade" />
+				<echo message="HardCode Package exists at ${qadelivery}/UpGrade" />
 				<property name="hcdelivery" value="Y" />
 			</then>
 			<else>
@@ -39,9 +41,9 @@
 		</if>
 		
 		<if>
-			<available file="${targetdir}/SQL" type="dir"/>
+			<available file="${qadelivery}/SQL" type="dir"/>
 			<then>
-				<echo message="DB Package exists at ${targetdir}/SQL" />
+				<echo message="DB Package exists at ${qadelivery}/SQL" />
 				<property name="dbdelivery" value="Y" />
 			</then>
 			<else>
@@ -56,12 +58,13 @@
 		<antcall target="copy-DB-delivery" />
 		<antcall target="copy-CLT-documention" />
 		<antcall target="update-DropBox" />
+		<delete dir="${qadelivery}" />
 	</target>
 	
 	<target name="copy-FE-delivery" if="fedelivery">
 		<echo message="Delivering FE Package." />
 		<copy todir="${destinationbase}/RealTime" preservelastmodified="true" verbose="true">
-			<fileset dir="${targetdir}/FE" >
+			<fileset dir="${qadelivery}/FE" >
 				<exclude name="**/Thumbs.db" />
 			</fileset>
 		</copy>
@@ -70,7 +73,7 @@
 	<target name="copy-HC-delivery" if="hcdelivery">
 		<echo message="Delivering HardCode Package." />
 		<copy todir="${destinationbase}/CLT/UPGRADE" preservelastmodified="true" verbose="true">
-			<fileset dir="${targetdir}/UpGrade" >
+			<fileset dir="${qadelivery}/UpGrade" >
 				<exclude name="**/Thumbs.db" />
 			</fileset>
 		</copy>
@@ -79,7 +82,7 @@
 	<target name="copy-DB-delivery" if="dbdelivery">
 		<echo message="Delivering DB Package." />
 		<copy todir="${destinationbase}/CLT/SQL" preservelastmodified="true" verbose="true">
-			<fileset dir="${targetdir}/SQL" >
+			<fileset dir="${qadelivery}/SQL" >
 				<exclude name="**/Thumbs.db" />
 			</fileset>
 		</copy>
