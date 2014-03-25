@@ -31,7 +31,7 @@
 
 	<target name="prebuild">
 		<property name="targetdir" value="${workdir}/Releases/clt${timestamp}" />
-		<property name="qadelivery" value="${patchdir}/Releases/QADelivery" />
+		<property name="qadelivery" value="${workdir}/Releases/QADelivery" />
 		<if>
 			<available file="${targetdir}/UpGrade" type="dir"/>
 			<then>
