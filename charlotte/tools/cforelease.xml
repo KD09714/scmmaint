@@ -63,7 +63,7 @@
 	
 	<target name="copy-FE-delivery" if="fedelivery">
 		<echo message="Delivering FE Package." />
-		<copy todir="${destinationbase}/RealTime" preservelastmodified="true" verbose="true">
+		<copy todir="${destinationbase}/RealTime" preservelastmodified="true" verbose="true" overwrite="true" force="true" >
 			<fileset dir="${qadelivery}/FE" >
 				<exclude name="**/Thumbs.db" />
 			</fileset>
@@ -72,7 +72,7 @@
 	
 	<target name="copy-HC-delivery" if="hcdelivery">
 		<echo message="Delivering HardCode Package." />
-		<copy todir="${destinationbase}/CLT/UPGRADE" preservelastmodified="true" verbose="true">
+		<copy todir="${destinationbase}/CLT/UPGRADE" preservelastmodified="true" verbose="true" overwrite="true" force="true">
 			<fileset dir="${qadelivery}/UpGrade" >
 				<exclude name="**/Thumbs.db" />
 			</fileset>
@@ -81,7 +81,7 @@
 	
 	<target name="copy-DB-delivery" if="dbdelivery">
 		<echo message="Delivering DB Package." />
-		<copy todir="${destinationbase}/CLT/SQL" preservelastmodified="true" verbose="true">
+		<copy todir="${destinationbase}/CLT/SQL" preservelastmodified="true" verbose="true" overwrite="true" force="true">
 			<fileset dir="${qadelivery}/SQL" >
 				<exclude name="**/Thumbs.db" />
 			</fileset>
