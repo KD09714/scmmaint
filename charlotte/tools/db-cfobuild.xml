@@ -106,7 +106,7 @@
 	<target name="dbbuild">
 		<exec executable="cmd" failonerror="true" >
 			<arg value="/c"/>
-			<arg value="${srcsafeworkdir}\DoIt${yearstamp}-auto.bat"/>
+			<arg value="${srcsafeworkdir}\DoIt${rel}-auto.bat"/>
 			<arg value="${timestamp}"/>
 		</exec>
 	</target>
