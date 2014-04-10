@@ -101,7 +101,8 @@
 			</fileset>
 		</copy>
 	</target>
-	<target name="update-DropBox">
+	
+	<target name="update-DropBox" if="hcdelivery">
 		<echo message="Updating MainFrame Dropbox." />
 		<copy todir="${dropboxdest}" file="${qadelivery}/HardCode${rel}.zip" preservelastmodified="true" overwrite="true" force="true" verbose="true" />
 	</target>
