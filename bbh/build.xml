@@ -1,8 +1,9 @@
 <!-- Modification History -->
 
+<!-- Dharmendra Kumar   04/17/2014      Zip the backup package    -->
 <!-- Dharmendra Kumar   02/18/2014      Add RestartService target -->
 <!-- Dharmendra Kumar	01/20/2014	Initial coding to deploy dotnet package for BBH -->
-<!-- version 2014.0.2 -->
+<!-- version 2014.0.3 -->
 <project name="DeployOnIIS" basedir=".." default="MachineInfo">
 <taskdef resource="net/sf/antcontrib/antcontrib.properties"/>
 	<tstamp>
@@ -106,6 +107,7 @@
 				<include name="**/*" />
 			</fileset>
 		</move>
+		<delete dir="${patchdir}/${timestamp}/new/${package}" />
 	</target>
 	
 	<target name="SetupConfigFiles">
@@ -145,6 +147,16 @@
 	
 	<target name="Install" depends="MachineInfo, VerifyPackage, StopAppPool, StopService, BackupCurrInstall, CopyPackage, InstallNewPackage, SetupConfigFiles, StartAppPool, StartService">
 		<echo message="Installation Completed for ${package}." />
+		
+	<!-- Zip the backup package -->
+		<move file="${patchdir}/${timestamp}/backup/${app}" tofile="${patchdir}/${timestamp}/backup/${package}" />
+		<zip destfile="${patchdir}/${timestamp}/backup/${package}.zip" >
+			<fileset dir="${patchdir}/${timestamp}/backup/" >
+				<include name="${package}/**" />
+			</fileset>
+		</zip>
+		<delete dir="${patchdir}/${timestamp}/backup/${package}" />
+		
 		<antcall target="EmailNotification" />
 	</target>
 	
