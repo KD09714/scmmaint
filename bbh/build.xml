@@ -3,7 +3,7 @@
 <!-- Dharmendra Kumar   04/17/2014      Zip the backup package    -->
 <!-- Dharmendra Kumar   02/18/2014      Add RestartService target -->
 <!-- Dharmendra Kumar	01/20/2014	Initial coding to deploy dotnet package for BBH -->
-<!-- version 2014.0.3 -->
+<!-- version 2014.0.4 -->
 <project name="DeployOnIIS" basedir=".." default="MachineInfo">
 <taskdef resource="net/sf/antcontrib/antcontrib.properties"/>
 	<tstamp>
@@ -74,9 +74,9 @@
 	
 	<target name="BackupCurrInstall" depends="StopAppPool">
 		<if>
-		<available file="${patchdir}/${timestamp}/backup/${app}" type="dir" />
+		<available file="${patchdir}/${timestamp}/backup/${package}.zip" />
 		<then>
-			<move file="${patchdir}/${timestamp}/backup/${app}" tofile="${patchdir}/${timestamp}/backup/${app}-${timestamp-HHmm}" preservelastmodified="true" />
+			<move file="${patchdir}/${timestamp}/backup/${package}.zip" tofile="${patchdir}/${timestamp}/backup/${package}-${timestamp-HHmm}.zip" preservelastmodified="true" />
 		</then>
 		</if>
 		
