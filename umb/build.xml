@@ -1,14 +1,15 @@
 <!-- Modification History -->
 
-<!-- Dharmendra Kumar   01/28/2014      Replace roken with password at runtime.          
+<!-- Dharmendra Kumar   04/30/2014      Replacing ftp with sftp                          -->
+<!-- Dharmendra Kumar   01/28/2014      Replace roken with password at runtime.
 					Handle multiple installroot directory            -->
 <!-- Dharmendra Kumar   01/27/2014      Added support to perform installation of multiple packages. -->
 <!-- Dharmendra Kumar   12/16/2013      Do not delete/ recreate installation directory   -->
 <!-- Dharmendra Kumar   12/11/2013      Changed the way it derive cfgfilewoext variable  -->
 <!-- Dharmendra Kumar   12/11/2013      Added target sequence.                           -->
 <!-- Dharmendra Kumar   12/11/2013      Add target to bounce trust & exent services      -->
-<!-- Dharmendra Kumar	11/25/2013	    Initial coding to deploy package for UMB custody -->
-<!-- version 2014.0.2 -->
+<!-- Dharmendra Kumar	11/25/2013	Initial coding to deploy package for UMB custody -->
+<!-- version 2014.0.3 -->
 <project name="DeployOnIIS" basedir=".." default="MachineInfo">
 <taskdef resource="net/sf/antcontrib/antcontrib.properties"/>
 	<tstamp>
@@ -317,14 +318,6 @@
 		<input message="Enter ftp userid [Ex. codemove]?" addproperty="ftpuser" />
 		<input message="Enter password for ${ftpuser}?" addproperty="ftppassword" />
 		<input message="Enter ftp path for package [ relative to ${ftpuser} home directory ]?" addproperty="ftppath" />
-		<ftp action="get" verbose="yes"
-			server="${ftphost}"
-			userid="${ftpuser}"
-			password="${ftppassword}"
-			remotedir="${ftppath}">
-			<fileset dir="${patchdir}/${timestamp}/new">
-				<include name="*" />
-			</fileset>
-		</ftp>
+		<scp file="${ftpuser}:${ftppassword}@${ftphost}:/localsftpusers/patch/${ftppath}/*.*" todir="${patchdir}/${timestamp}/new" sftp="true" preserveLastModified="true" trust="yes" />
 	</target>
 </project>
