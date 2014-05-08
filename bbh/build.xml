@@ -1,9 +1,11 @@
 <!-- Modification History -->
 
+<!-- Dharmendra Kumar   05/21/2014      Add Rollback target       -->
 <!-- Dharmendra Kumar   04/17/2014      Zip the backup package    -->
 <!-- Dharmendra Kumar   02/18/2014      Add RestartService target -->
-<!-- Dharmendra Kumar	01/20/2014	Initial coding to deploy dotnet package for BBH -->
-<!-- version 2014.0.5 -->
+<!-- Dharmendra Kumar	01/20/2014	    Initial coding to deploy dotnet package for BBH -->
+
+<!-- version 2014.0.6 -->
 <project name="DeployOnIIS" basedir=".." default="MachineInfo">
 <taskdef resource="net/sf/antcontrib/antcontrib.properties"/>
 	<tstamp>
@@ -12,6 +14,7 @@
 	</tstamp>
 	
 	<property file="cfg/deploy.cfg"/>
+	<property file="cfg/lastinstall.cfg"/>
 	<property name="patchdir" value="D:/bbh" />
 	<mkdir dir="${patchdir}/${timestamp}/log" />
 	<record name="${patchdir}/${timestamp}/log/install-${timestamp-HHmm}.log" />
@@ -49,6 +52,28 @@
 	
 	<target name="RestartAppPool" depends="StopAppPool, StartAppPool" if="applicationpool" >
 		<echo message="Restart Completed..!" />
+	</target>
+	
+	<target name="VerifyBackup">
+		<echo message="Last Backup Date is found to be ${lastbackupdate}" />
+		<if>
+			<available file="${patchdir}/${lastbackupdate}/backup/${package}.zip" />
+			<then>
+				<input message="Do you want to revert with the backup of ${lastbackupdate}" validargs="y,n" addproperty="confirmrollback" />
+			</then>
+			<else>
+				<fail message="${patchdir}/${lastbackupdate}/backup/${package}.zip does not exists..!!" />
+			</else>
+		</if>
+		<if>
+			<equals arg1="${confirmrollback}" arg2="n" />
+			<then>
+				<fail message="User has opted not to proceed ....., Exiting." />
+			</then>
+			<else>
+				<copy file="${patchdir}/${lastbackupdate}/backup/${package}.zip" todir="${patchdir}/${timestamp}/rollback" overwrite="true" force="true" />
+			</else>
+		</if>
 	</target>
 	
 	<target name="StopService" if="servicename">
@@ -110,6 +135,18 @@
 		<delete dir="${patchdir}/${timestamp}/new/${package}" />
 	</target>
 	
+	<target name="RevertPackage">
+		<if>
+			<equals arg1="${confirmrollback}" arg2="y" />
+			<then>
+				<unzip src="${patchdir}/${timestamp}/rollback/${package}.zip" dest="${patchdir}/${timestamp}/rollback" />
+				<move todir="${installroot}/${installdir}" preservelastmodified="true" >
+					<fileset dir="${patchdir}/${timestamp}/rollback/${package}" />
+				</move>
+			</then>
+		</if>
+	</target>
+	
 	<target name="SetupConfigFiles">
 		<for list="${configtosetup}" delimiter=";" param = "cfgfilewpath">
 		<sequential>
@@ -157,6 +194,13 @@
 		</zip>
 		<delete dir="${patchdir}/${timestamp}/backup/${package}" />
 		
+		<echo message="lastbackupdate=${timestamp}" file="cfg/lastinstall.cfg" force="true" />
+		<antcall target="EmailNotification" />
+	</target>
+	
+	<target name="Rollback" depends="MachineInfo, VerifyBackup, StopAppPool, BackupCurrInstall, RevertPackage, StartAppPool">
+		<echo message="Rollback Completed for ${package}." />
+		<property name="subject" value="Rollback Completed for ${package} on ${env.COMPUTERNAME}" />
 		<antcall target="EmailNotification" />
 	</target>
 	
