@@ -15,7 +15,7 @@
 <!-- 06/24/2013   Dharmendra Kumar     Added support to do full package if fullpackage variable  -->
 <!--                                   is set to Y in config file.                               -->
 <!-- 06/06/2013   Dharmendra Kumar     Initial Coding to Automate Charllote FE Build & Packaging -->
-<!-- rev=2014.1.14-->
+<!-- rev=2014.1.15-->
 
 <project name="cltfebuild" default="vsshistory" basedir="..">
 <taskdef resource="net/sf/antcontrib/antcontrib.properties"/>
@@ -233,7 +233,7 @@
 					<then>
 						<copy todir="${targetdir}/FE/bin" verbose="true" overwrite="true" preservelastmodified="true">
 							<fileset dir="${outputdir}/bin">
-								<filename name="App_Web_${filenamewoext_lower}*.dll" />
+								<filename name="App_Web_${filenamewoext_lower}.*.dll" />
 							</fileset>
 						</copy>
 					</then>
@@ -244,7 +244,7 @@
 					<then>
 						<copy todir="${targetdir}/FE/bin" verbose="true" overwrite="true" preservelastmodified="true">
 							<fileset dir="${outputdir}/bin">
-								<filename name="App_Web_${filenamewoext_lower}*.dll" />
+								<filename name="App_Web_${filenamewoext_lower}.*.dll" />
 							</fileset>
 						</copy>
 					</then>
