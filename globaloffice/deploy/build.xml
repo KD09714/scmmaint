@@ -465,25 +465,25 @@
 		<for list="${package-installdir}|${custompackage-installdir}" delimiter="|" param="pack-idir" >
 			<sequential>
 				<var name="p-name" unset="true" />
+				<var name="specialdir.set" unset="true" />
 				<for list="@{pack-idir}" delimiter=":" param="pack" >
 					<sequential>
 						<var name="p-dir" unset="true" />
 						<property name="p-dir" value="@{pack}" />
 						<property name="p-name" value="@{pack}" />
-					</sequential>
-				</for>
-				
-				<!--for list="${package},${custompackage}" param="p" >
-					<sequential>
+						
+						<condition property="specialdir.set">
+							<isset property="@{pack}-specialdir"/>
+						</condition>
+						
 						<if>
-						<equals arg1="@{p}" arg2="${p-name}" />
-							<then>
-								<var name="installroot" unset="true" />
-								<property name="installroot" value="${@{p}-installroot}" />
-							</then>
+						<equals arg1="${specialdir.set}" arg2="true" />
+						<then>
+							<property name="specialdir" value="${@{pack}-specialdir}" />
+						</then>
 						</if>
 					</sequential>
-				</for-->
+				</for>
 				
 				<for list="${package},${custompackage}" param="pack-temp" >
 					<sequential>
@@ -501,39 +501,85 @@
 										</sequential>
 									</for>
 									
+									<echo message="${line.separator} Processing config file: ${cfg-name} ${line.separator}" />
+									
 									<property name="wp-name" value="${@{pack-temp}-webconfigdir}" />
+									<var name="cfg-real-name" unset="true" />
 									<basename property="cfg-real-name" file="${cfg-name}" />
 									
-									<copy tofile="${webconfigtool}/UpdateFiles/${p-name}/${cfg-name}.UPDATES.${wp-name}" file="${installroot}/${p-dir}/${cfg-name}.UPDATES.${wp-name}" preservelastmodified="true" force="true" overwrite="true"/>
-						
+									
+									<delete dir="${webconfigtool}/UpdateFiles" />
+									<delete dir="${webconfigtool}/Old_MUP_Configs" />
+									
 									<if>
 									<equals arg1="${cfg-loc}" arg2="O" />
 									<then>
+										<copy tofile="${webconfigtool}/UpdateFiles/${p-name}/${cfg-name}.UPDATES.${wp-name}" file="${installroot}/${p-dir}/${cfg-name}.UPDATES.${wp-name}" preservelastmodified="true" force="true" overwrite="true"/>
 										<copy file="${patchdir}/${timestamp}/backup/${p-name}/${cfg-name}" todir="${webconfigtool}/Old_MUP_Configs/${p-name}" preservelastmodified="true" force="true" overwrite="true" />
+									
+										<delete file="${webconfigtool}/UpdateFilesSupported.txt" />
+										<echo message="${p-name}\${cfg-name}.UPDATES.${wp-name},${p-name}\${cfg-name}" file="${webconfigtool}/UpdateFilesSupported.txt" />
+										<exec executable="cmd.exe" dir="${webconfigtool}" failonerror="true">
+											<arg value="/c WebConfigUpdate002.exe ${tokenid}" />
+										</exec>
+										<copy file="${webconfigtool}/Old_MUP_Configs/${p-name}/${cfg-real-name}.new" tofile="${installroot}/${p-dir}/${cfg-name}" preservelastmodified="true" overwrite="true" force="true" />
+										<echo message="Configuring ${installroot}/${p-dir}/${cfg-name} completed." />
 									</then>
 									
 									<else>
-										<copy file="${installroot}/${p-dir}/${cfg-name}" todir="${webconfigtool}/Old_MUP_Configs/${p-name}/" preservelastmodified="true" force="true" overwrite="true" />
+										<if>
+										<equals arg1="${cfg-loc}" arg2="N" />
+										<then>
+											<copy tofile="${webconfigtool}/UpdateFiles/${p-name}/${cfg-name}.UPDATES.${wp-name}" file="${installroot}/${p-dir}/${cfg-name}.UPDATES.${wp-name}" preservelastmodified="true" force="true" overwrite="true"/>
+											<copy file="${installroot}/${p-dir}/${cfg-name}" todir="${webconfigtool}/Old_MUP_Configs/${p-name}/" preservelastmodified="true" force="true" overwrite="true" />
+											
+											<delete file="${webconfigtool}/UpdateFilesSupported.txt" />
+											<echo message="${p-name}\${cfg-name}.UPDATES.${wp-name},${p-name}\${cfg-name}" file="${webconfigtool}/UpdateFilesSupported.txt" />
+											<exec executable="cmd.exe" dir="${webconfigtool}" failonerror="true">
+												<arg value="/c WebConfigUpdate002.exe ${tokenid}" />
+											</exec>
+											<copy file="${webconfigtool}/Old_MUP_Configs/${p-name}/${cfg-real-name}.new" tofile="${installroot}/${p-dir}/${cfg-name}" preservelastmodified="true" overwrite="true" force="true" />
+											<echo message="Configuring ${installroot}/${p-dir}/${cfg-name} completed." />
+										</then>
+										<else>
+											<copy file="${patchdir}/${timestamp}/backup/${p-name}/${cfg-name}" tofile="${installroot}/${p-dir}/${cfg-name}" preservelastmodified="true" force="true" overwrite="true" />
+										</else>
+										</if>
 									</else>
 									</if>
-									
-									<delete file="${webconfigtool}/UpdateFilesSupported.txt" />
-									<echo message="${p-name}\${cfg-name}.UPDATES.${wp-name},${p-name}\${cfg-name}" file="${webconfigtool}/UpdateFilesSupported.txt" />
-									<exec executable="cmd.exe" dir="${webconfigtool}" failonerror="true">
-										<arg value="/c WebConfigUpdate002.exe ${tokenid}" />
-									</exec>
-									<copy file="${webconfigtool}/Old_MUP_Configs/${p-name}/${cfg-real-name}.new" tofile="${installroot}/${p-dir}/${cfg-name}" preservelastmodified="true" overwrite="true" force="true" />
-									<echo message="Configuring ${installroot}/${p-dir}/${cfg-name} completed." />
 								</sequential>
 							</for>
 						</then>
 					</if>
 					</sequential>
 					</for>
+					
+					<if>
+					<equals arg1="${specialdir.set}" arg2="true" />
+					<then>
+						<for list="${specialdir}" delimiter="|" param="dir-perm">
+						<sequential>
+							<var name="dir" unset="true"/>
+							<for list="@{dir-perm}" delimiter=":" param="value">
+							<sequential>
+								<property name="dir" value="@{value}"/>
+								<var name="perm" unset="true" />
+								<property name="perm" value="@{value}"/>
+							</sequential>
+							</for>
+							
+							<exec executable="cmd" failonerror="true">
+								<arg value="/c icacls &quot;${installroot}/${p-dir}/${dir}&quot; /grant &quot;${perm}&quot;:(CI)(OI)F" />
+							</exec>
+						</sequential>
+						</for>
+					</then>
+					</if>
+					
 			</sequential>
 		</for>
 	</target>
-	
+		
 	<target name="Install" depends="MachineInfo, CopyPackage, ValidatePackage, StopAppPool, BackupThemeInstall, BackupCustomInstall, BackupCurrInstall, InstallNewPackage, ApplyCustomTheme, ApplyCustomPacakges, SetupConfigFiles, StartAppPool">
 		<echo message="Installation Completed for ${package}." />
 		<delete dir="${patchdir}/${timestamp}/new" />
