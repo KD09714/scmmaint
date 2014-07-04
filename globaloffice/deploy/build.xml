@@ -1,1 +1,569 @@
-deploy
+<!-- Modification History -->
+
+<!-- Dharmendra Kumar	04/23/2014	    Initial coding to deploy package for globaloffice -->
+<!-- version 2014.0.1 -->
+<project name="DeployOnIIS" basedir=".." default="MachineInfo">
+<taskdef resource="net/sf/antcontrib/antcontrib.properties"/>
+	<tstamp>
+		<format property="timestamp" pattern="yyyyMMdd"/>
+		<format property="timestamp-HHmm" pattern="yyyyMMdd-HHmm"/>
+	</tstamp>
+	
+	<property file="cfg/deploy.cfg"/>
+	<property name="patchdir" value="D:/globaloffice" />
+	<mkdir dir="${patchdir}/${timestamp}/log" />
+	<record name="${patchdir}/${timestamp}/log/install-${timestamp-HHmm}.log" />
+	<record name="${patchdir}/${timestamp}/log/install.debug-${timestamp-HHmm}.log" loglevel="verbose" />
+	
+	<property environment="env" />
+	<property name="emailuser" value="${env.USERNAME}@sungard.com" />
+	<property name="defaultemailto" value="codemovegrp1@sungard.com" />
+	<mkdir dir="${patchdir}/${timestamp}/new" />
+	
+	<target name="ValidatePackage">
+		<for list="${package-installdir}" delimiter="|" param="pack-idir" >
+			<sequential>
+				<for list="@{pack-idir}" delimiter=":" param="pack" >
+					<sequential>
+						<property name="themeparentpackage" value="@{pack}" />
+						<if>
+						<available file="${patchdir}/${timestamp}/new/@{pack}.zip" />
+							<then>
+								<property name="package.exists" value="true" />
+								<property name="one.package.exists" value="true" />
+								<echo message="@{pack}.zip exists for installation ..!!" />
+
+								<property name="package" value="true" />
+								<var name="temp" unset="true" />
+								<property name="temp" value="${package}" />
+								<var name="package" unset="true" />
+								<if>
+								<equals arg1="${temp}" arg2="true" />
+									<then>
+										<property name="package" value="@{pack}" />
+									</then>
+									<else>
+										<property name="package" value="${temp},@{pack}" />
+									</else>
+								</if>
+							</then>
+						</if>
+					</sequential>
+				</for>
+			</sequential>
+		</for>
+		
+		<for list="${themepackage-installdir}" delimiter="|" param="themepack-idir" >
+			<sequential>
+				<for list="@{themepack-idir}" delimiter=":" param="themepack" >
+					<sequential>
+						<if>
+						<available file="${patchdir}/${timestamp}/new/@{themepack}.zip" />
+							<then>
+								<property name="themepackage.exists" value="true" />
+								<property name="one.package.exists" value="true" />
+								<echo message="@{themepack}.zip exists for installation ..!!" />
+
+								<property name="themepackage" value="true" />
+								<var name="temp" unset="true" />
+								<property name="temp" value="${themepackage}" />
+								<var name="themepackage" unset="true" />
+								<if>
+								<equals arg1="${temp}" arg2="true" />
+									<then>
+										<property name="themepackage" value="@{themepack}" />
+									</then>
+									<else>
+										<property name="themepackage" value="${temp},@{themepack}" />
+									</else>
+								</if>
+							</then>
+						</if>
+					</sequential>
+				</for>
+			</sequential>
+		</for>
+		
+		<for list="${custompackage-installdir}" delimiter="|" param="custompack-idir" >
+			<sequential>
+				<for list="@{custompack-idir}" delimiter=":" param="custompack" >
+					<sequential>
+						<if>
+						<available file="${patchdir}/${timestamp}/new/@{custompack}.zip" />
+							<then>
+								<property name="custompackage.exists" value="true" />
+								<property name="one.package.exists" value="true" />
+								<echo message="@{custompack}.zip exists for installation ..!!" />
+
+								<property name="custompackage" value="true" />
+								<var name="temp" unset="true" />
+								<property name="temp" value="${custompackage}" />
+								<var name="custompackage" unset="true" />
+								<if>
+								<equals arg1="${temp}" arg2="true" />
+									<then>
+										<property name="custompackage" value="@{custompack}" />
+									</then>
+									<else>
+										<property name="custompackage" value="${temp},@{custompack}" />
+									</else>
+								</if>
+							</then>
+						</if>
+					</sequential>
+				</for>
+			</sequential>
+		</for>
+		
+		<if>
+		<equals arg1="${one.package.exists}" arg2="true" />
+			<else>
+				<fail message="No package exists for installation ...!!" />
+			</else>
+		</if>
+		
+	</target>
+	
+	<target name="MachineInfo">
+		<echo message="TIMESTAMP : ${timestamp-HHmm}"/>
+		<echo message="SERVER    : ${env.COMPUTERNAME}" />
+		<echo message="DOMAIN    : ${env.USERDOMAIN}" />
+		<echo message="USER      : ${env.USERNAME}" />		
+	</target>
+	
+	<target name="StopAppPool" if="applicationpool" >
+		<for list="${applicationpool}" delimiter="|" param="a-pool" >
+			<sequential>
+				<exec executable="cmd" failonerror="true">
+					<arg value="/c" />
+					<arg value="appcmd stop apppool /apppool.name:@{a-pool}" />
+				</exec>
+				<sleep seconds="10"/>
+			</sequential>
+		</for>
+	</target>
+	
+	<target name="StartAppPool" if="applicationpool" >
+		<for list="${applicationpool}" delimiter="|" param="a-pool" >
+			<sequential>
+				<exec executable="cmd" failonerror="true">
+					<arg value="/c" />
+					<arg value="appcmd start apppool /apppool.name:@{a-pool}" />
+				</exec>
+				<sleep seconds="10"/>
+			</sequential>
+		</for>
+	</target>
+	
+	<target name="RestartAppPool" depends="StopAppPool, StartAppPool" if="applicationpool" >
+		<echo message="Restart Completed..!" />
+	</target>
+	
+	<target name="BackupThemeInstall" if="themepackage.exists">
+		<for list="${themepackage-installdir}" delimiter="|" param="themepack-idir" >
+			<sequential>
+				<var name="tp-name" unset="true" />
+				<for list="@{themepack-idir}" delimiter=":" param="themepack" >
+					<sequential>
+						<var name="tp-dir" unset="true" />
+						<property name="tp-dir" value="@{themepack}" />
+						<property name="tp-name" value="@{themepack}" />
+					</sequential>
+				</for>
+				
+				<for list="${themepackage}" param="tp" >
+					<sequential>
+						<if>
+						<equals arg1="@{tp}" arg2="${tp-name}" />
+							<then>
+								<var name="themeinstallroot" unset="true" />
+								<property name="themeinstallroot" value="${@{tp}-installroot}/App_Themes" />
+							</then>
+						</if>
+					</sequential>
+				</for>
+						
+				<if>
+				<available file="${patchdir}/${timestamp}/new/${tp-name}.zip" />
+					<then>
+						<if>
+						<available file="${patchdir}/${timestamp}/backup/${tp-name}" type="dir" />
+							<then>
+								<move file="${patchdir}/${timestamp}/backup/${tp-name}" tofile="${patchdir}/${timestamp}/backup/${tp-name}-${timestamp-HHmm}" preservelastmodified="true" />
+							</then>
+						</if>
+		
+						<if>
+						<available file="${themeinstallroot}/${tp-dir}" type="dir" />
+							<then>
+								<echo message="Backing up the current theme installation.." />
+								<copy todir="${patchdir}/${timestamp}/backup/${tp-name}/MyThemes/Default" preservelastmodified="true" overwrite="true" force="true">
+									<fileset dir="${themeinstallroot}/${tp-dir}" />
+								</copy>
+								<!--delete dir="${themeinstallroot}/${tp-dir}" /-->
+							</then>
+							<else>
+								<echo message="Nothing to backup...!!" />
+							</else>
+						</if>
+					</then>
+				</if>
+			</sequential>
+		</for>
+	</target>
+	
+	<target name="BackupCustomInstall" if="custompackage.exists">
+		<for list="${custompackage-installdir}" delimiter="|" param="custompack-idir" >
+			<sequential>
+				<var name="cp-name" unset="true" />
+				<for list="@{custompack-idir}" delimiter=":" param="custompack" >
+					<sequential>
+						<var name="cp-dir" unset="true" />
+						<property name="cp-dir" value="@{custompack}" />
+						<property name="cp-name" value="@{custompack}" />
+					</sequential>
+				</for>
+				
+				<for list="${custompackage}" param="cp" >
+					<sequential>
+						<if>
+						<equals arg1="@{cp}" arg2="${cp-name}" />
+							<then>
+								<var name="custominstallroot" unset="true" />
+								<property name="custominstallroot" value="${@{cp}-installroot}" />
+							</then>
+						</if>
+					</sequential>
+				</for>
+						
+				<if>
+				<available file="${patchdir}/${timestamp}/new/${cp-name}.zip" />
+					<then>
+						<if>
+						<available file="${patchdir}/${timestamp}/backup/${cp-name}" type="dir" />
+							<then>
+								<move file="${patchdir}/${timestamp}/backup/${cp-name}" tofile="${patchdir}/${timestamp}/backup/${cp-name}-${timestamp-HHmm}" preservelastmodified="true" />
+							</then>
+						</if>
+		
+						<if>
+						<available file="${custominstallroot}/${cp-dir}" type="dir" />
+							<then>
+								<echo message="Backing up the current custom installation.." />
+								<copy todir="${patchdir}/${timestamp}/backup/${cp-name}" preservelastmodified="true" overwrite="true" force="true">
+									<fileset dir="${custominstallroot}/${cp-dir}" />
+								</copy>
+								<!--delete dir="${themeinstallroot}/${tp-dir}" /-->
+							</then>
+							<else>
+								<echo message="Nothing to backup...!!" />
+							</else>
+						</if>
+					</then>
+				</if>
+			</sequential>
+		</for>
+	</target>
+
+	<target name="BackupCurrInstall" if="package.exists">
+		<for list="${package-installdir}" delimiter="|" param="pack-idir" >
+			<sequential>
+				<var name="p-name" unset="true" />
+				<for list="@{pack-idir}" delimiter=":" param="pack" >
+					<sequential>
+						<var name="p-dir" unset="true" />
+						<property name="p-dir" value="@{pack}" />
+						<property name="p-name" value="@{pack}" />
+					</sequential>
+				</for>
+				
+				<for list="${package}" param="p" >
+					<sequential>
+						<if>
+						<equals arg1="@{p}" arg2="${p-name}" />
+							<then>
+								<var name="installroot" unset="true" />
+								<property name="installroot" value="${@{p}-installroot}" />
+							</then>
+						</if>
+					</sequential>
+				</for>
+						
+				<if>
+				<available file="${patchdir}/${timestamp}/new/${p-name}.zip" />
+					<then>
+						<if>
+						<available file="${patchdir}/${timestamp}/backup/${p-name}" type="dir" />
+							<then>
+								<move file="${patchdir}/${timestamp}/backup/${p-name}" tofile="${patchdir}/${timestamp}/backup/${p-name}-${timestamp-HHmm}" preservelastmodified="true" />
+							</then>
+						</if>
+		
+						<echo message="Backing up the current installation.." />
+						<mkdir dir="${installroot}/${p-dir}" />
+						<copy todir="${patchdir}/${timestamp}/backup/${p-name}" preservelastmodified="true" overwrite="true" force="true">
+							<fileset dir="${installroot}/${p-dir}" />
+						</copy>
+						<delete dir="${installroot}/${p-dir}" />
+					</then>
+				</if>
+			</sequential>
+		</for>
+	</target>	
+
+	<target name="CopyPackage" if="packagesource">
+		<copy todir="${patchdir}/${timestamp}/new" >
+			<fileset dir="${packagesource}" >
+				<include name="*.zip" />
+			</fileset>
+		</copy>
+	</target>
+	
+	<target name="InstallNewPackage" if="package" >
+		<for list="${package-installdir}" delimiter="|" param="pack-idir" >
+			<sequential>
+				<var name="p-name" unset="true" />
+				<for list="@{pack-idir}" delimiter=":" param="pack" >
+					<sequential>
+						<var name="p-dir" unset="true" />
+						<property name="p-dir" value="@{pack}" />
+						<property name="p-name" value="@{pack}" />
+					</sequential>
+				</for>
+
+				<for list="${package}" param="p" >
+					<sequential>
+						<if>
+						<equals arg1="@{p}" arg2="${p-name}" />
+							<then>
+								<var name="installroot" unset="true" />
+								<property name="installroot" value="${@{p}-installroot}" />
+							</then>
+						</if>
+					</sequential>
+				</for>
+						
+				<if>
+				<available file="${patchdir}/${timestamp}/new/${p-name}.zip" />
+					<then>
+						<unzip src="${patchdir}/${timestamp}/new/${p-name}.zip" dest="${patchdir}/${timestamp}/new" />
+						<move todir="${installroot}/${p-dir}" preservelastmodified="true" >
+							<fileset dir="${patchdir}/${timestamp}/new/${p-name}" >
+								<include name="**/*" />
+							</fileset>
+						</move>
+						<delete dir="${patchdir}/${timestamp}/new/${p-name}" />
+					</then>
+				</if>
+			</sequential>
+		</for>
+	</target>
+	
+	<target name="ApplyCustomTheme" if="themepackage-installdir">
+		<for list="${themepackage-installdir}" delimiter="|" param="themepack-idir" >
+			<sequential>
+				<var name="tp-name" unset="true" />
+				<for list="@{themepack-idir}" delimiter=":" param="themepack" >
+					<sequential>
+						<var name="tp-dir" unset="true" />
+						<property name="tp-dir" value="@{themepack}" />
+						<property name="tp-name" value="@{themepack}" />
+						<if>
+						<equals arg1="${tp-dir}" arg2="${tp-name}" />
+							<else>
+								<property name="themetoapply" value="${tp-dir}" />
+							</else>
+							<then>
+								<var name="themeinstallroot" unset="true" />
+								<property name="themeinstallroot" value="${@{themepack}-installroot}/App_Themes" />
+							</then>
+						</if>
+					</sequential>
+				</for>
+
+				<if>
+				<available file="${patchdir}/${timestamp}/new/${tp-name}.zip" />
+					<then>
+						<unzip src="${patchdir}/${timestamp}/new/${tp-name}.zip" dest="${patchdir}/${timestamp}/new" />
+						<move todir="${themeinstallroot}/${tp-dir}" preservelastmodified="true" >
+							<fileset dir="${patchdir}/${timestamp}/new/${tp-name}/MyThemes/Default" />
+						</move>
+						<delete dir="${patchdir}/${timestamp}/new/${tp-name}" />
+					</then>
+					<else>
+						<if>
+							<available file="${patchdir}/${timestamp}/backup/${themeparentpackage}/App_Themes/${tp-dir}" type="dir" />
+							<then>
+								<echo message="Applying theme from the backup of last installation ..!!" />
+								<copy todir="${themeinstallroot}/${tp-dir}" preservelastmodified="true" >
+									<fileset dir="${patchdir}/${timestamp}/backup/${themeparentpackage}/App_Themes/${tp-dir}" />
+								</copy>
+							</then>
+							<else>
+								<echo message="Backup folder does not contain theme directory..!!" />
+							</else>
+						</if>
+					</else>
+				</if>
+				<!--replace file="${themeparentpackage}/Themes.config">
+					<replacefilter token="Default" value="${themetoapply}" />
+				</replace-->
+			</sequential>
+		</for>
+	</target>
+	
+	<target name="ApplyCustomPacakges" if="custompackage-installdir">
+		<for list="${custompackage-installdir}" delimiter="|" param="custompack-idir" >
+			<sequential>
+				<var name="cp-name" unset="true" />
+				<for list="@{custompack-idir}" delimiter=":" param="custompack" >
+					<sequential>
+						<var name="cp-dir" unset="true" />
+						<property name="cp-dir" value="@{custompack}" />
+						<property name="cp-name" value="@{custompack}" />
+						<if>
+						<equals arg1="${cp-dir}" arg2="${cp-name}" />
+							<then>
+								<var name="custominstallroot" unset="true" />
+								<property name="custominstallroot" value="${@{custompack}-installroot}" />
+							</then>
+						</if>
+					</sequential>
+				</for>
+
+				<if>
+				<available file="${patchdir}/${timestamp}/new/${cp-name}.zip" />
+					<then>
+						<unzip src="${patchdir}/${timestamp}/new/${cp-name}.zip" dest="${patchdir}/${timestamp}/new" />
+						<move todir="${custominstallroot}/${cp-dir}" preservelastmodified="true" >
+							<fileset dir="${patchdir}/${timestamp}/new/${cp-name}" />
+						</move>
+						<copy file="${custominstallroot}/${cp-dir}/bin/${cp-name}.dll" todir="${custominstallroot}/bin" preservelastmodified="true" overwrite="true" force="true" />
+						<delete dir="${patchdir}/${timestamp}/new/${cp-name}" />
+					</then>
+					<else>
+						<if>
+							<available file="${patchdir}/${timestamp}/backup/${themeparentpackage}/${cp-dir}" type="dir" />
+							<then>
+								<echo message="Applying custom from the backup of last installation ..!!" />
+								<copy todir="${custominstallroot}/${cp-dir}" preservelastmodified="true" >
+									<fileset dir="${patchdir}/${timestamp}/backup/${themeparentpackage}/${cp-dir}" />
+								</copy>
+								<copy file="${patchdir}/${timestamp}/backup/${themeparentpackage}/bin/${cp-name}.dll" todir="${custominstallroot}/bin" preservelastmodified="true" overwrite="true" force="true" />
+							</then>
+							<else>
+								<echo message="Backup folder does not contain custom directory..!!" />
+							</else>
+						</if>
+					</else>
+				</if>
+			</sequential>
+		</for>
+	</target>
+	
+	<target name="SetupConfigFiles">
+		<for list="${package-installdir}|${custompackage-installdir}" delimiter="|" param="pack-idir" >
+			<sequential>
+				<var name="p-name" unset="true" />
+				<for list="@{pack-idir}" delimiter=":" param="pack" >
+					<sequential>
+						<var name="p-dir" unset="true" />
+						<property name="p-dir" value="@{pack}" />
+						<property name="p-name" value="@{pack}" />
+					</sequential>
+				</for>
+				
+				<!--for list="${package},${custompackage}" param="p" >
+					<sequential>
+						<if>
+						<equals arg1="@{p}" arg2="${p-name}" />
+							<then>
+								<var name="installroot" unset="true" />
+								<property name="installroot" value="${@{p}-installroot}" />
+							</then>
+						</if>
+					</sequential>
+				</for-->
+				
+				<for list="${package},${custompackage}" param="pack-temp" >
+					<sequential>
+					<if>
+					<equals arg1="${p-name}" arg2="@{pack-temp}" />
+						<then>
+							<for list="${@{pack-temp}-configtosetup}" delimiter="|" param = "cfgfilewpath-copyfrom">
+								<sequential>
+									<var name="cfg-name" unset="true" />
+									<for list="@{cfgfilewpath-copyfrom}" delimiter=":" param="cfgfilewpath">
+										<sequential>
+											<var name="cfg-loc" unset="true" />
+											<property name="cfg-name" value="@{cfgfilewpath}" />
+											<property name="cfg-loc" value="@{cfgfilewpath}" />
+										</sequential>
+									</for>
+									
+									<property name="wp-name" value="${@{pack-temp}-webconfigdir}" />
+									<basename property="cfg-real-name" file="${cfg-name}" />
+									
+									<copy tofile="${webconfigtool}/UpdateFiles/${p-name}/${cfg-name}.UPDATES.${wp-name}" file="${installroot}/${p-dir}/${cfg-name}.UPDATES.${wp-name}" preservelastmodified="true" force="true" overwrite="true"/>
+						
+									<if>
+									<equals arg1="${cfg-loc}" arg2="O" />
+									<then>
+										<copy file="${patchdir}/${timestamp}/backup/${p-name}/${cfg-name}" todir="${webconfigtool}/Old_MUP_Configs/${p-name}" preservelastmodified="true" force="true" overwrite="true" />
+									</then>
+									
+									<else>
+										<copy file="${installroot}/${p-dir}/${cfg-name}" todir="${webconfigtool}/Old_MUP_Configs/${p-name}/" preservelastmodified="true" force="true" overwrite="true" />
+									</else>
+									</if>
+									
+									<delete file="${webconfigtool}/UpdateFilesSupported.txt" />
+									<echo message="${p-name}\${cfg-name}.UPDATES.${wp-name},${p-name}\${cfg-name}" file="${webconfigtool}/UpdateFilesSupported.txt" />
+									<exec executable="cmd.exe" dir="${webconfigtool}" failonerror="true">
+										<arg value="/c WebConfigUpdate002.exe ${tokenid}" />
+									</exec>
+									<copy file="${webconfigtool}/Old_MUP_Configs/${p-name}/${cfg-real-name}.new" tofile="${installroot}/${p-dir}/${cfg-name}" preservelastmodified="true" overwrite="true" force="true" />
+									<echo message="Configuring ${installroot}/${p-dir}/${cfg-name} completed." />
+								</sequential>
+							</for>
+						</then>
+					</if>
+					</sequential>
+					</for>
+			</sequential>
+		</for>
+	</target>
+	
+	<target name="Install" depends="MachineInfo, CopyPackage, ValidatePackage, StopAppPool, BackupThemeInstall, BackupCustomInstall, BackupCurrInstall, InstallNewPackage, ApplyCustomTheme, ApplyCustomPacakges, SetupConfigFiles, StartAppPool">
+		<echo message="Installation Completed for ${package}." />
+		<delete dir="${patchdir}/${timestamp}/new" />
+		<antcall target="EmailNotification" />
+	</target>
+	
+	<target name="EmailNotification" if="emailsmtpserver">
+		<mail mailhost="${emailsmtpserver}" subject="Installation Completed for ${package} on ${env.COMPUTERNAME}" from="${emailuser}" tolist="${emailtolist},${defaultemailto}" >
+			<message>Installation log attached.</message>
+			<attachments>
+				<fileset dir="${patchdir}/${timestamp}/log">
+					<include name="install-${timestamp-HHmm}.log"/>
+				</fileset>
+			</attachments>
+		</mail>
+	</target>
+	
+	<target name="Download">
+		<echo message="Connecting to ftp server ${ftphost} :" />
+		<input message="Enter ftp userid [Ex. codemove]?" addproperty="ftpuser" />
+		<input message="Enter password for ${ftpuser}?" addproperty="ftppassword" />
+		<input message="Enter ftp path for package [ relative to ${ftpuser} home directory ]?" addproperty="ftppath" />
+		<ftp action="get" verbose="yes"
+			server="${ftphost}"
+			userid="${ftpuser}"
+			password="${ftppassword}"
+			remotedir="${ftppath}">
+			<fileset dir="${patchdir}/${timestamp}/new">
+				<include name="*" />
+			</fileset>
+		</ftp>
+	</target>
+</project>
