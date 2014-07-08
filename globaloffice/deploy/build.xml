@@ -446,7 +446,7 @@
 							<available file="${patchdir}/${timestamp}/backup/${themeparentpackage}/${cp-dir}" type="dir" />
 							<then>
 								<echo message="Applying custom from the backup of last installation ..!!" />
-								<copy todir="${custominstallroot}/${cp-dir}" preservelastmodified="true" >
+								<copy todir="${custominstallroot}/App_Themes/${cp-dir}" preservelastmodified="true" >
 									<fileset dir="${patchdir}/${timestamp}/backup/${themeparentpackage}/${cp-dir}" />
 								</copy>
 								<copy file="${patchdir}/${timestamp}/backup/${themeparentpackage}/bin/${cp-name}.dll" todir="${custominstallroot}/bin" preservelastmodified="true" overwrite="true" force="true" />
@@ -522,7 +522,15 @@
 										<exec executable="cmd.exe" dir="${webconfigtool}" failonerror="true">
 											<arg value="/c WebConfigUpdate002.exe ${tokenid}" />
 										</exec>
-										<copy file="${webconfigtool}/Old_MUP_Configs/${p-name}/${cfg-real-name}.new" tofile="${installroot}/${p-dir}/${cfg-name}" preservelastmodified="true" overwrite="true" force="true" />
+										<if>
+										<available file="${webconfigtool}/Old_MUP_Configs/${p-name}/${cfg-real-name}.new" />
+										<then>
+											<copy file="${webconfigtool}/Old_MUP_Configs/${p-name}/${cfg-real-name}.new" tofile="${installroot}/${p-dir}/${cfg-name}" preservelastmodified="true" overwrite="true" force="true" />
+										</then>
+										<else>
+											<copy file="${webconfigtool}/Old_MUP_Configs/${p-name}/${cfg-real-name}" tofile="${installroot}/${p-dir}/${cfg-name}" preservelastmodified="true" overwrite="true" force="true" />
+										</else>
+										</if>
 										<echo message="Configuring ${installroot}/${p-dir}/${cfg-name} completed." />
 									</then>
 									
@@ -538,7 +546,15 @@
 											<exec executable="cmd.exe" dir="${webconfigtool}" failonerror="true">
 												<arg value="/c WebConfigUpdate002.exe ${tokenid}" />
 											</exec>
-											<copy file="${webconfigtool}/Old_MUP_Configs/${p-name}/${cfg-real-name}.new" tofile="${installroot}/${p-dir}/${cfg-name}" preservelastmodified="true" overwrite="true" force="true" />
+											<if>
+											<available file="${webconfigtool}/Old_MUP_Configs/${p-name}/${cfg-real-name}.new" />
+											<then>
+												<copy file="${webconfigtool}/Old_MUP_Configs/${p-name}/${cfg-real-name}.new" tofile="${installroot}/${p-dir}/${cfg-name}" preservelastmodified="true" overwrite="true" force="true" />
+											</then>
+											<else>
+												<copy file="${webconfigtool}/Old_MUP_Configs/${p-name}/${cfg-real-name}" tofile="${installroot}/${p-dir}/${cfg-name}" preservelastmodified="true" overwrite="true" force="true" />
+											</else>
+											</if>
 											<echo message="Configuring ${installroot}/${p-dir}/${cfg-name} completed." />
 										</then>
 										<else>
