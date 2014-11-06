@@ -1,9 +1,10 @@
 <!-- Modification History -->
 
+<!-- Dharmendra Kumar   11/06/2014  Stop/ Start Application pool                          -->
 <!-- Dharmendra Kumar   11/25/2013  Changed newwl to newwl1 as per dev request            -->
 <!-- Dharmendra Kumar   11/11/2013  Fixed the copy command in setup config                -->
 <!-- Dharmendra Kumar	10/31/2013	Initial coding to deploy weblink html5 package in IIS -->
-<!-- version 2013.0.3 -->
+<!-- version 2014.0.1 -->
 <project name="DeployOnIIS" basedir=".." default="MachineInfo">
 <taskdef resource="net/sf/antcontrib/antcontrib.properties"/>
 	<tstamp>
@@ -31,32 +32,20 @@
 		<echo message="USER      : ${env.USERNAME}" />		
 	</target>
 	
-	<target name="StopIIS">
+	<target name="StopAppPool" if="applicationpool" >
 		<exec executable="cmd" failonerror="true">
 			<arg value="/c" />
-			<arg value="iisreset /stop" />
+			<arg value="appcmd stop apppool /apppool.name:${applicationpool}" />
 		</exec>
+		<sleep seconds="10"/>
 	</target>
 	
-	<target name="StartIIS">
+	<target name="StartAppPool" if="applicationpool" >
 		<exec executable="cmd" failonerror="true">
 			<arg value="/c" />
-			<arg value="iisreset /start" />
+			<arg value="appcmd start apppool /apppool.name:${applicationpool}" />
 		</exec>
-	</target>
-	
-	<target name="StopWebIIS" if="webserver">
-		<exec executable="cmd" >
-			<arg value="/c" />
-			<arg value="sc \\${webserver} stop iisadmin" />
-		</exec>
-	</target>
-	
-	<target name="StartWebIIS" if="webserver">
-		<exec executable="cmd" >
-			<arg value="/c" />
-			<arg value="sc \\${webserver} start iisadmin" />
-		</exec>
+		<sleep seconds="10"/>
 	</target>
 	
 	<target name="RestartIIS">
@@ -106,7 +95,7 @@
 		</for>
 	</target>
 	
-	<target name="Install" depends="MachineInfo, StopWebIIS, StopIIS, BackupCurrInstall, CopyPackage, InstallNewPackage, SetupConfigFiles, ConfigureWebsite, StartIIS, StartWebIIS">
+	<target name="Install" depends="MachineInfo, StopAppPool, BackupCurrInstall, CopyPackage, InstallNewPackage, SetupConfigFiles, ConfigureWebsite, StartAppPool">
 		<if>
 		<available file="${patchdir}/${timestamp}/installed/${package}.zip" type="file" />
 		<then>
