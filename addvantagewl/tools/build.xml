@@ -55,7 +55,7 @@
 		</exec>
 	</target>
 	
-	<target name="BackupCurrInstall" depends="StopWebIIS, StopIIS">
+	<target name="BackupCurrInstall" depends="StopAppPool">
 		<if>
 		<available file="${patchdir}/${timestamp}/backup/${app}" type="dir" />
 		<then>
