@@ -20,7 +20,7 @@
 <!-- 02/26/2013     Dharmendra Kumar  Added publisheddir variable to handle the case where it's value -->
 <!--								  is different than project name								  -->
 <!-- 02/15/2013		Dharmendra Kumar  Initial Coding to Support Packaging of GlobalOffice Products    -->
-<!-- rev=2013.0.18-->
+<!-- rev=2013.0.19-->
 
 <project name="CreatePatch" default="WrapupPatch" basedir="..">
 	<property environment="env" />
@@ -298,6 +298,7 @@
 	<target name="RenameCfg" if="renamecfg">
 		<for list="${renamecfg}" delimiter=";" param="renamecandidate">
 			<sequential>
+				<var name="precfg" unset="true"/>
 				<for list="@{renamecandidate}" delimiter=":" param="file">
 					<sequential>
 						<property name="precfg" value="@{file}" />
