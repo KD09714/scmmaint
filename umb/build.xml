@@ -134,6 +134,25 @@
 		<echo message="Restart Completed ..!" />
 	</target>
 	
+	<target name="StopReportService" if="reportservicename">
+		<exec executable="cmd" failonerror="true" >
+			<arg value="/c" />
+			<arg value="sc stop ${reportservicename}" />
+		</exec>
+		<sleep seconds="10"/>
+	</target>
+	
+	<target name="StartReportService" if="reportservicename">
+		<exec executable="cmd" failonerror="true" >
+			<arg value="/c" />
+			<arg value="sc start ${reportservicename}" />
+		</exec>
+		<sleep seconds="10"/>
+	</target>
+	
+	<target name="RestartReportService" depends="StopReportService, StartReportService" if="reportservicename">
+		<echo message="Restart Completed ..!" />
+	</target>
 	<target name="BackupCurrInstall" depends="StopAppPool">
 		<for list="${package-installdir}" delimiter="|" param="pack-idir" >
 			<sequential>
@@ -297,7 +316,7 @@
 		</for>
 	</target>
 	
-	<target name="Install" depends="MachineInfo, CopyPackage, ValidatePackage, StopAppPool, StopEventService, StopTrustService, BackupCurrInstall, InstallNewPackage, SetupConfigFiles, StartAppPool, StartTrustService, StartEventService">
+	<target name="Install" depends="MachineInfo, CopyPackage, ValidatePackage, StopAppPool, StopEventService, StopTrustService, StopReportService, BackupCurrInstall, InstallNewPackage, SetupConfigFiles, StartAppPool, StartTrustService, StartEventService, StartReportService">
 		<echo message="Installation Completed for ${package}." />
 		<antcall target="EmailNotification" />
 	</target>
